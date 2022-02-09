@@ -26,3 +26,6 @@ fit$coef
 
 y_hat <- fit$coef[1] + fit$coef[2]*test_set$father
 mean((y_hat - test_set$son)^2)
+
+# or use predict() function to create a prediction y_hat
+y_hat <- predict(fit, test_set)
