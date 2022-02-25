@@ -1,0 +1,17 @@
+#set working directory
+setwd("X:/.../zeug für georg")
+getwd()
+
+#install packages
+install.packages("readxl")
+library("readxl")
+
+
+#import list of PID
+df <- read_excel("R_export.xlsx")
+PID_list <- df$PID
+
+# funktion 
+for ( i in PID_list){
+  cat(" ([event-name][pid]=\"",i,"\") OR ", sep="")
+  }
