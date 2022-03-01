@@ -1395,3 +1395,90 @@ cutoff_Duration <- surv_cutpoint(
   variables = "Duration",
   minprop = 0.1)
 print(cutoff_Duration)
+
+#### für die proximalen Landezonen - hier bin ich für dgthg nochmal die landezonen durchgegangen und habe korrigiert
+
+TAA_prox <- TAA
+
+#### patienten mit proximal landing zone 1, 2, 3
+#### es gibt in der variable patienten die ich als LZ 1/2 gecoded habe, die aber kein debranching bekommen haben?
+TAA_prox_check <- subset(TAA, TAA$prox_landing_zone != 3 & TAA$prox_landing_zone != 4 & TAA$Adjuvant_Proc !=1)
+TAA_prox_check$SN
+
+# re-asseign the patients that were actually LZ 3 and not 2
+TAA_prox$prox_landing_zone <- ifelse(TAA_prox$SN == 19 | TAA_prox$SN==28 | TAA_prox$SN==79 | TAA_prox$SN==83 | TAA_prox$SN==87 | TAA_prox$SN==104 | TAA_prox$SN==126, 3, TAA_prox$prox_landing_zone)
+
+#exclude one patient where I cannot find the original procedure (nur EVAR und ascendens ersatz?, ich glaube die OP Daten hatte ich aus dem Archiv)
+TAA_prox <- subset(TAA_prox, SN != 134)
+table(TAA_prox$Adjuvant_Proc)
+
+#correct that three patients actually had debranching
+TAA_prox$Adjuvant_Proc <- ifelse(TAA_prox$SN==35 | TAA_prox$SN==57 | TAA_prox$SN==63, 1, TAA_prox$Adjuvant_Proc)
+
+# ein patient habe ich gecoded als hat debranching bekommen aber LZ 3  - check 
+TAA_prox_check_2 <- subset(TAA_prox, TAA_prox$Adjuvant_Proc==1 & TAA_prox$prox_landing_zone==3)
+TAA_prox_check_2$SN
+
+# patient stimmt jetzt
+TAA_prox$prox_landing_zone <- ifelse(TAA_prox$SN==12, 2, TAA_prox$prox_landing_zone)
+table(TAA_prox$Adjuvant_Proc)
+
+#stimmen die LZ 1?
+TAA_prox$Debranching <- ifelse(TAA_prox$Adjuvant_Proc_Detailed==1 | TAA_prox$Adjuvant_Proc_Detailed==2, 1,0)
+TAA_prox$CSBypass <- ifelse(TAA_prox$Adjuvant_Proc_Detailed==3 | TAA_prox$Adjuvant_Proc_Detailed==4, 1,0)
+
+TAA_prox_check_3 <- subset(TAA_prox, TAA_prox$prox_landing_zone==1 & TAA_prox$Debranching==0)
+TAA_prox_check_3$SN
+
+TAA_prox$prox_landing_zone <- ifelse(TAA_prox$SN==116, 2, TAA_prox$prox_landing_zone)
+TAA_prox$Adjuvant_Proc_Detailed <- ifelse(TAA_prox$SN==116, 3, TAA_prox$Adjuvant_Proc_Detailed)
+
+TAA_prox$Adjuvant_Proc_Detailed <- ifelse(TAA_prox$SN==57, 1, TAA_prox$Adjuvant_Proc_Detailed)
+
+# wer sind die patienten mit LZ 2 und ohne CS Bypass?
+TAA_prox_check_4 <- subset(TAA_prox, TAA_prox$prox_landing_zone==2 & TAA_prox$CSBypass==0)
+TAA_prox_check_4$SN
+
+#fix
+TAA_prox$Adjuvant_Proc_Detailed <- ifelse(TAA_prox$SN==35, 3, TAA_prox$Adjuvant_Proc_Detailed)
+TAA_prox$leak_1a_status <- ifelse(TAA_prox$SN==95, 1, TAA_prox$leak_1a_status)
+
+
+# variables for debranching und CS Bypass
+TAA_prox$Debranching <- ifelse(TAA_prox$Adjuvant_Proc_Detailed==1 | TAA_prox$Adjuvant_Proc_Detailed==2, 1,0)
+TAA_prox$CSBypass <- ifelse(TAA_prox$Adjuvant_Proc_Detailed==3 | TAA_prox$Adjuvant_Proc_Detailed==4, 1,0)
+
+table(TAA_prox$prox_landing_zone)
+table(TAA_prox$Debranching)
+table(TAA_prox$CSBypass)
+
+#### Analyse - Wie war das Outcome bei denen mit LZ 0-1 im Vergleich zu den anderen (Cave - LZ 0/1 ist hier nur 1)
+# neue variable für LZ 0/1 (=1) oder LZ 2/3/4 (=0)
+TAA_prox$LZ01 <- ifelse(TAA_prox$prox_landing_zone == 1, 1, 0)
+table(TAA_prox$LZ01)
+
+## Einfluss auf Überleben
+cox_LZ_01_survival <- coxph(Surv(Months_Surv_FU, Survival)~TAA_prox$LZ01, data = TAA_prox, na.action = "na.omit")
+cox_LZ_01_survival
+
+## Einfluss auf Reintervention
+cox_LZ_01_reinterv <-coxph(Surv(Months_Reinterv_FU, Reinterv)~TAA_prox$LZ01, data = TAA_prox, na.action = "na.omit")
+cox_LZ_01_reinterv
+
+#### Vergleich LZ 0-2 (=1) und LZ 3-4 (=0)
+TAA_prox$LZ02 <- ifelse(TAA_prox$prox_landing_zone == 1 | TAA_prox$prox_landing_zone == 2, 1, 0)
+table(TAA_prox$LZ02)
+
+## Einfluss auf Überleben
+cox_LZ_02_survival <- coxph(Surv(Months_Surv_FU, Survival)~TAA_prox$LZ02, data = TAA_prox, na.action = "na.omit")
+cox_LZ_02_survival
+
+## Einfluss auf Reintervention
+cox_LZ_02_reinterv <-coxph(Surv(Months_Reinterv_FU, Reinterv)~TAA_prox$LZ02, data = TAA_prox, na.action = "na.omit")
+cox_LZ_02_reinterv
+
+## landing zone length
+wilcox.test(TAA_prox$PDLZ_length ~ TAA_prox$LZ02)
+
+TAA_prox %>% filter(LZ02 == 1) %>% summarize(describe(PDLZ_length))
+TAA_prox %>% filter(LZ02 == 0) %>% summarize(describe(PDLZ_length))
