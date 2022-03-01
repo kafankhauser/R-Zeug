@@ -1,0 +1,296 @@
+library(easypackages)
+
+libraries(c("survival",
+            "psych",
+            "cmprsk",
+            "dplyr",
+            "readxl",
+            "forcats",
+            "foreign",
+            "ggplot2",
+            "ggpubr",
+            "ggrepel",
+            "ggsci",
+            "ggsignif",
+            "ggtext",
+            "glmet",
+            "lubridate",
+            "MASS",
+            "MatchIt",
+            "Matching",
+            "Matrixmodels",
+            "mstate",
+            "olsrr",
+            "cutpointr",
+            "OLScurve",
+            "plyr",
+            "purrr",
+            "rematch",
+            "rematch2",
+            "reshape",
+            "reshape2",
+            "RItools",
+            "statmod",
+            "survival",
+            "survminer",
+            "stringi",
+            "survMisc",
+            "tibble",
+            "tidyr", 
+            "tidyselect",
+            "tidyverse",
+            "xfun",
+            "xopen",
+            "ComparisonSurv"))
+
+#Import
+TAA_Kathi <- read_excel("TAA_Kathi_DGTHG_anonymisiert.xlsx")
+TAA<-TAA_Kathi
+
+# create clean data set with patients that had stent in proximal landing zone 1,2,3
+
+#### patienten mit proximal landing zone 1, 2, 3
+#### es gibt in der variable patienten die ich als LZ 1/2 gecoded habe, die aber kein debranching bekommen haben?
+TAA_prox_check <- subset(TAA, TAA$prox_landing_zone != 3 & TAA$prox_landing_zone != 4 & TAA$Adjuvant_Proc !=1)
+TAA_prox_check$SN
+
+# exlcude those with LZ 4
+TAA_prox <- subset(TAA, TAA$prox_landing_zone != 4)
+
+#### patienten mit proximal landing zone 1, 2, 3
+#### es gibt in der variable patienten die ich als LZ 1/2 gecoded habe, die aber kein debranching bekommen haben?
+TAA_prox_check <- subset(TAA, TAA$prox_landing_zone != 3 & TAA$prox_landing_zone != 4 & TAA$Adjuvant_Proc !=1)
+TAA_prox_check$SN
+
+# re-asseign the patients that were actually LZ 3 and not 2
+TAA_prox$prox_landing_zone <- ifelse(TAA_prox$SN == 19 | TAA_prox$SN==28 | TAA_prox$SN==79 | TAA_prox$SN==83 | TAA_prox$SN==87 | TAA_prox$SN==104 | TAA_prox$SN==126, 3, TAA_prox$prox_landing_zone)
+
+#exclude one patient where I cannot find the original procedure (nur EVAR und ascendens ersatz?, ich glaube die OP Daten hatte ich aus dem Archiv)
+TAA_prox <- subset(TAA_prox, SN != 134)
+table(TAA_prox$Adjuvant_Proc)
+
+#correct that three patients actually had debranching
+TAA_prox$Adjuvant_Proc <- ifelse(TAA_prox$SN==35 | TAA_prox$SN==57 | TAA_prox$SN==63, 1, TAA_prox$Adjuvant_Proc)
+
+# ein patient habe ich gecoded als hat debranching bekommen aber LZ 3  - check 
+TAA_prox_check_2 <- subset(TAA_prox, TAA_prox$Adjuvant_Proc==1 & TAA_prox$prox_landing_zone==3)
+TAA_prox_check_2$SN
+
+# patient stimmt jetzt
+TAA_prox$prox_landing_zone <- ifelse(TAA_prox$SN==12, 2, TAA_prox$prox_landing_zone)
+table(TAA_prox$Adjuvant_Proc)
+
+#stimmen die LZ 1?
+TAA_prox$Debranching <- ifelse(TAA_prox$Adjuvant_Proc_Detailed==1 | TAA_prox$Adjuvant_Proc_Detailed==2, 1,0)
+TAA_prox$CSBypass <- ifelse(TAA_prox$Adjuvant_Proc_Detailed==3 | TAA_prox$Adjuvant_Proc_Detailed==4, 1,0)
+
+TAA_prox_check_3 <- subset(TAA_prox, TAA_prox$prox_landing_zone==1 & TAA_prox$Debranching==0)
+TAA_prox_check_3$SN
+
+TAA_prox$prox_landing_zone <- ifelse(TAA_prox$SN==116, 2, TAA_prox$prox_landing_zone)
+TAA_prox$Adjuvant_Proc_Detailed <- ifelse(TAA_prox$SN==116, 3, TAA_prox$Adjuvant_Proc_Detailed)
+
+TAA_prox$Adjuvant_Proc_Detailed <- ifelse(TAA_prox$SN==57, 1, TAA_prox$Adjuvant_Proc_Detailed)
+
+# wer sind die patienten mit LZ 2 und ohne CS Bypass?
+TAA_prox_check_4 <- subset(TAA_prox, TAA_prox$prox_landing_zone==2 & TAA_prox$CSBypass==0)
+TAA_prox_check_4$SN
+
+#fix
+TAA_prox$Adjuvant_Proc_Detailed <- ifelse(TAA_prox$SN==35, 3, TAA_prox$Adjuvant_Proc_Detailed)
+TAA_prox$leak_1a_status <- ifelse(TAA_prox$SN==95, 1, TAA_prox$leak_1a_status)
+
+
+# variables for debranching und CS Bypass
+TAA_prox$Debranching <- ifelse(TAA_prox$Adjuvant_Proc_Detailed==1 | TAA_prox$Adjuvant_Proc_Detailed==2, 1,0)
+TAA_prox$CSBypass <- ifelse(TAA_prox$Adjuvant_Proc_Detailed==3 | TAA_prox$Adjuvant_Proc_Detailed==4, 1,0)
+
+table(TAA_prox$prox_landing_zone)
+table(TAA_prox$Debranching)
+table(TAA_prox$CSBypass)
+
+######### der Datensatz TAA_prox ist jetzt clean bez?glich proximaler Landezone
+
+# print list - redcap export
+
+for ( i in TAA_prox$PID){ 
+  cat(" ([event-name][pid]=\"",i,"\") OR ", sep="")
+}
+
+
+# die postoperativen Neuro events
+table(TAA_prox$MACE_Evemts)
+TAA_prox$post_OP_neuro_event <- ifelse(TAA_prox$MACE_Evemts==4 |
+                                         TAA_prox$MACE_Evemts==5 |
+                                         TAA_prox$MACE_Evemts==6, 1, 0)
+#SN 93 da war der stroke nach REA
+TAA_prox$post_OP_neuro_event <- ifelse(TAA_prox$SN==93, TAA_prox$post_OP_neuro_event==0, TAA_prox$post_OP_neuro_event)
+table(TAA_prox$post_OP_neuro_event)
+
+##### Analyse
+table(TAA_prox$prox_landing_zone)
+#cave LZ 1 in TAA_prox ist eigentlich 3 mit LZ 0 und 6 mit LZ 1
+
+# median aneurysm diameter
+describe(TAA_prox$Aneur_diam)
+
+# median aneurysm volume
+describe(TAA_prox$Aneur_volume)
+
+#median prox dlz centerline length
+describe(TAA_prox$PDLZ_length)
+
+#median stent overstenting proximal
+describe(TAA_prox$OVP_diam)
+
+
+
+# survival analysis
+Surv <- survfit(Surv(Months_Surv_FU, Survival) ~ 1, data = TAA_prox)
+summary(Surv, times = c(0.99, 11.99, 59.99, 119.99))
+
+# reintervention analysis
+Reinterv <- survfit(Surv(Months_Reinterv_FU, Reinterv) ~ 1, data = TAA_prox)
+summary(Reinterv, times = c(0.99, 11.99, 59.99, 119.99))
+
+
+
+# konfirmatorische statistik
+
+# patienten mit LZ 0/1 had a 2.53% higher risk for longterm mortality
+TAA_prox$prox_LZ_0_or_1 <- ifelse(TAA_prox$prox_landing_zone==1, 1, 0)
+cox_LZ_01 <-coxph(Surv(Months_Surv_FU, Survival)~TAA_prox$prox_LZ_0_or_1, data = TAA_prox, na.action = "na.omit")
+summary(cox_LZ_01)
+
+# # patienten mit LZ 0/1 had a 3.76% higher risk for reintervention
+cox_LZ_01_reinterv <-coxph(Surv(Months_Reinterv_FU, Reinterv)~TAA_prox$prox_LZ_0_or_1, data = TAA_prox, na.action = "na.omit")
+summary(cox_LZ_01_reinterv)
+
+#Patienten mit LZ 0,1,2 had significantly shorter LZ than patients with LZ 3
+TAA_prox$prox_LZ_3 <- ifelse(TAA_prox$prox_landing_zone==3, 1, 0)
+wilcox.test(TAA_prox$PDLZ_length ~ TAA_prox$prox_LZ_3)
+TAA_prox_LZ_3 <- subset(TAA_prox, TAA_prox$prox_LZ_3 == 1)
+TAA_prox_LZ_0_or_1_or_2 <- subset(TAA_prox, TAA_prox$prox_LZ_3==0)
+describe(TAA_prox_LZ_3$PDLZ_length)
+describe(TAA_prox_LZ_0_or_1_or_2$PDLZ_length)
+
+#univariable analysis
+
+cox_age<-coxph(Surv(Months_Surv_FU, Survival)~TAA_prox$Age, data = TAA_prox, na.action = "na.omit")
+summary(cox_age)
+
+cox_urgency <-coxph(Surv(Months_Surv_FU, Survival)~TAA_prox$operative_urgency, data = TAA_prox, na.action = "na.omit")
+summary(cox_urgency)
+
+cox_duration <-coxph(Surv(Months_Surv_FU, Survival)~TAA_prox$Duration, data = TAA_prox, na.action = "na.omit")
+summary(cox_duration)
+
+cox_Euroscore <-coxph(Surv(Months_Surv_FU, Survival)~TAA_prox$Euroscore2, data = TAA_prox, na.action = "na.omit")
+summary(cox_Euroscore)
+
+cox_neuro <-coxph(Surv(Months_Surv_FU, Survival)~TAA_prox$post_OP_neuro_event, data = TAA_prox, na.action = "na.omit")
+summary(cox_neuro)
+
+cox_diam <-coxph(Surv(Months_Surv_FU, Survival)~TAA_prox$Aneur_diam, data = TAA_prox, na.action = "na.omit")
+summary(cox_diam)
+
+
+#cut off analysis
+
+cutoff_Duration <- surv_cutpoint(
+  TAA_prox,
+  time = "exact_Years_Surv_FU",
+  event = "Survival",
+  variables = "Duration",
+  minprop = 0.1)
+print(cutoff_Duration)
+
+cutoff_Age <- surv_cutpoint(
+  TAA_prox,
+  time = "exact_Years_Surv_FU",
+  event = "Survival",
+  variables = "Age",
+  minprop = 0.1)
+print(cutoff_Age)
+
+cutoff_Euroscore <- surv_cutpoint(
+  TAA_prox,
+  time = "exact_Years_Surv_FU",
+  event = "Survival",
+  variables = "Euroscore2",
+  minprop = 0.1)
+print(cutoff_Euroscore)
+
+#multivariable analysis
+table(TAA_prox$Survival)
+
+TAA_prox$Age_80y <- ifelse(TAA_prox$Age <80, 0, 1)
+TAA_prox$Duration_3h <- ifelse(TAA_prox$Duration < 186, 0, 1)
+TAA_prox$Euroscore_cutoff <- ifelse(TAA_prox$Euroscore2 < 1.8, 0, 1)
+
+multi_cox <- coxph(Surv(Months_Surv_FU, Survival) ~ Age_80y + Duration_3h + operative_urgency + Euroscore2, data = TAA_prox, na.action = "na.omit")
+summary(multi_cox)
+
+### export file
+install.packages("writexl")
+library("writexl")
+write_xlsx(TAA_prox, "TAA_prox.xlsx")
+
+
+### violin plots with jitter ($TAA_prox_LZ_0_or_1_or_2)
+TAA_prox$prox_LZ_3 <- as.factor(TAA_prox$prox_LZ_3)
+
+data_summary <- function(x) {
+  m <- mean(x)
+  ymin <- m-sd(x)
+  ymax <- m+sd(x)
+  return(c(y=m,ymin=ymin,ymax=ymax))
+}
+
+
+
+# Procedure duration stratifiziert
+TAA_prox$prox_LZ_x <- ifelse(TAA_prox$prox_landing_zone<=2, 1, 0)
+cox_duration_x <-coxph(Surv(Months_Surv_FU, Survival) ~ TAA_prox$Duration + Age + prox_LZ_x, data = TAA_prox, na.action = "na.omit")
+cox_duration_x
+TAA_prox
+
+
+# violine plot
+
+TAA_prox$prox_LZ_3 <- ifelse(TAA_prox$prox_landing_zone==3, 1, 0)
+TAA_prox$prox_LZ_3 <- recode_factor(TAA_prox$prox_LZ_3, '1' ="3", '0'="0-2")
+
+
+#violine plot
+plot <- ggplot(data=TAA_prox,
+               aes(x=prox_LZ_3, y=PDLZ_length, na.rm=T)) +
+  geom_violin(draw_quantiles = c(0.25, 0.5, 0.75),
+              trim=FALSE,
+              fill='white',
+              alpha = 0.1,
+              color = 'royalblue4')
+plot + geom_jitter(shape=16, position=position_jitter(0.1), size = 1.5, color = 'royalblue4') +
+  theme_classic() +
+  ylim(-20, 210) +
+  xlab("proximal device landing zone") +
+  ylab("length of device landing zone (mm)")
+
+#boxplot
+ggplot(data=TAA_prox, aes(x=prox_LZ_3, y=PDLZ_length, na.rm=T)) +
+   geom_boxplot(fill= 'royalblue4', color = 'black', outlier.size = 0.2) +
+   theme_classic() +
+   ylim(0, 120) +
+   xlab("proximal device landing zone") +
+   ylab("length of device landing zone (mm)")
+
+#median length  LZ 3 52.7
+#median length LZ 0-2 25.6
+
+table(TAA_prox$prox_LZ_3, TAA_prox$any_1a_endoleak)
+TAA_prox$typ1a_endoleak_six_months <- recode_factor(TAA_prox$endoleak_six_months, '0'="0", 'Typ 1a'="1", 'Typ 1b'="0", 'Typ 2'="0", 'Typ 3'="0")
+
+#patienten mit typ1a endoleak
+print(subset(TAA_prox, any_1a_endoleak == 1 & prox_LZ_3 == "3")$SN)
+
+
