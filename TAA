@@ -1,0 +1,1397 @@
+OCS.1[, factor_var]<- OCS.1[, factor_var] %>%
+  mutate_all(., as.factor)
+glimpse(OCS.1)
+OCS.1$Group<-as.logical.factor(OCS.1$Group)
+ocspp1<- matchit(Group~Age+Gender+Zn_MCS_or_Re-op+Donor_Age
+        +Donor_Reci_Gender+Rea_Donor+LVH+Catechol_index
+        , data=OCS.1, method = "optimal", distance = "mahalanobis", ratio = 2)
+glimpse(OCS.1)
+
+library(easypackages)
+
+libraries(c("survival",
+             "psych",
+             "cmprsk",
+             "dplyr",
+             "readxl",
+             "forcats",
+             "foreign",
+             "ggplot2",
+             "ggpubr",
+             "ggrepel",
+             "ggsci",
+             "ggsignif",
+             "ggtext",
+             "glmet",
+             "lubridate",
+             "MASS",
+             "MatchIt",
+             "Matching",
+             "Matrixmodels",
+             "mstate",
+             "olsrr",
+             "OLScurve",
+             "plyr",
+             "purrr",
+             "rematch",
+             "rematch2",
+             "reshape",
+             "reshape2",
+             "RItools",
+             "statmod",
+             "survival",
+             "survminer",
+             "stringi",
+             "survMisc",
+             "tibble",
+             "tidyr", 
+             "tidyselect",
+             "tidyverse",
+             "xfun",
+             "xopen",
+             "ComparisonSurv"))
+
+#Import
+TAA_Kathi <- read_excel("TAA_Kathi_DGTHG_anonymisiert.xlsx")
+TAA<-TAA_Kathi
+glimpse(TAA)
+
+# calculate the month interval between OP_Date and Date_FU_Surv
+TAA <- TAA %>% 
+  mutate(FU_Surv_Months = (interval(OP_Date, Date_FU_Surv)) %/% months(1))
+
+#calculate the month interval between OP_date and Date_Reinterv
+TAA <- TAA %>% 
+  mutate(FU_Reinterv_Months = (interval(OP_Date, Date_Reinterv_FU)) %/% months(1))
+
+
+#calculate the month interval between OP_date and Event_Date
+TAA <- TAA %>% 
+  mutate(FU_MACE_Months = (interval(OP_Date, Date_MACE)) %/% months(1))
+
+#compare avail months to in-r-calculated months 
+TAA %>% 
+  select(FU_Surv_Months, Months_Surv_FU, FU_Reinterv_Months, Months_Reinterv_FU, FU_MACE_Months)
+glimpse(TAA)
+
+# convert the status such that 0 == 1 and 1 == 2
+
+TAA <- TAA %>% 
+  mutate(Survival2 = if_else(Survival == 0, 1, 2))
+
+#label variables as factor  
+Factor_Variables<-c(3, 6, 19, 21, 23, 24, 25, 26, 27, 28, 29, 30, 32, 35, 36, 37, 41, 42, 43, 44, 48 )
+
+OCS.1[, factor_Var] <- OCS.1[, factor_Var] %>% 
+  mutate_all(., factor)
+
+
+#preop-Rhythm as factor 
+## TAA$Pre_op_Rhythm<-as.factor(TAA$Pre_op_Rhythm)
+
+# label variables as numeric 
+
+Numeric_var<- c(18, 20, 34, 45, 46, 47, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73)
+TAA[, Numeric_var] <- TAA[, Numeric_var] %>% 
+  mutate_all(., as.numeric)
+glimpse(TAA)
+
+#create R Reinterv format
+TAA <- TAA %>% 
+  mutate(Reinterv2 = if_else(Reinterv == 0, 0, 1))
+
+
+#creating new variables which came be turned to logical. 
+
+logical_fact<-c( 21, 23, 24, 26, 27, 28, 29, 30, 32, 35, 36, 37, 41, 42, 43, 44)
+
+
+#survival analysis
+Surv1 <- survfit(Surv(Months_Surv_FU, Survival2) ~ 1, data = TAA)
+
+ggsurvplot(fit = Surv1,
+           xlab = "Months following TEVAR",
+           ylab = "Overall survival probability",
+           title = "Survival",
+           risk.table = TRUE,
+           tables.theme = theme_cleantable(),
+           palette = "lancet",
+           xlim = c(0,120),
+           risk.table.height = 0.15,
+           legend = "none",
+           ggtheme = theme_bw())
+
+# surv plot with years
+
+Surv_Y <- survfit(Surv(exact_Years_Surv_FU, Survival2) ~ 1, data = TAA)
+
+ggsurvplot(fit = Surv_Y,
+           xlab = "Years after TEVAR",
+           break.x.by= 1,
+           ylab = "survival probability",
+           title = "Survival",
+           font.title = c(20,"bold"),
+           risk.table = TRUE,
+           cumevents = TRUE,
+           tables.theme = theme_cleantable(),
+           palette = "lancet",
+           xlim = c(0,11.3),
+           risk.table.height = 0.15,
+           legend = "none",
+           surv.median.line = "hv",
+           risk.table.title="Cumulative number of events")
+a$plot+theme(plot.title = element_text(hjust = 0.5))      
+plot(a)
+summary(Surv1, times = c(0.99, 11.99, 35.99, 59.99, 119.99))
+surv_median(Surv1)
+
+#Reinterv analysis
+Reinterv1<-survfit(Surv(Months_Reinterv_FU, Reinterv2)~1, data = TAA)
+
+ggsurvplot(fit = Reinterv1,
+                     xlab = "Months following TEVAR",
+                     ylab = "Freedom from Reintervention",
+                     title = "Reintervention",
+                     risk.table = TRUE,
+                     tables.theme = theme_cleantable(),
+                     palette = "lancet",
+                     xlim = c(0,120),
+                     risk.table.height = 0.15,
+                     legend = "none",
+                     ggtheme = theme_bw())
+
+summary(Reinterv1, times = c(0.99, 11.99, 59.99, 119.99))
+
+describe(TAA$Months_Reinterv_FU, quant=c(.25,.75))
+subset_Reinterv <- subset(TAA, Reinterv==1)
+describe(subset_Reinterv$Months_Reinterv_FU, quant=c(.25,.75))
+
+# reinterv plot with years
+
+Reinterv_Y<-survfit(Surv(exact_Years_Reinterv_FU, Reinterv2)~1, data = TAA)
+
+ggsurvplot(fit = Reinterv_Y,
+                xlab = "Years after TEVAR",
+                break.x.by= 1,
+                ylab = "probability to be free of reintervention",
+                title = "Freedom of aortic reintervention",
+                font.title = c(20,"bold"),
+                risk.table = TRUE,
+                cumevents = TRUE,
+                tables.theme = theme_cleantable(),
+                palette = "simpsons",
+                xlim = c(0,11.3),
+                risk.table.height = 0.15,
+                legend = "none",
+                risk.table.title="Cumulative number of events")
+b$plot+theme(plot.title = element_text(hjust = 0.5))  
+
+               
+
+# both survival and reintervention plot in one graph
+both_plot <- list(a,b)
+arrange_ggsurvplots(both_plot)
+
+
+#survival of patients with AAS
+
+Surv_AAS_Y <- survfit(Surv(exact_Years_Surv_FU, Survival2) ~ 1, data = subset_withAAS)
+fit_plot2 <- list(Surv_Y, Surv_withAAS)
+
+
+
+#create endoleak parameter and format as logical
+
+TAA <- TAA %>% 
+  mutate(Endoleak2 = if_else(Endoleak_First_CT == 0, 0, 1))
+TAA$Endoleak2<-as.logical(TAA$Endoleak2)
+glimpse(TAA$Endoleak_First_CT)
+
+#create variable for proximal leaks
+TAA <- TAA %>% 
+  mutate(Endoleak3 = if_else(Endoleak_First_CT == "Typ 1a", 1, 0))
+TAA$Endoleak2<-as.logical(TAA$Endoleak3)
+glimpse(TAA)
+
+# create variable for distal leaks
+TAA <- TAA %>% 
+  mutate(Endoleak4 = if_else(Endoleak_First_CT == "Typ 1b", 1, 0))
+TAA$Endoleak2<-as.logical(TAA$Endoleak4)
+glimpse(TAA$Endoleak4)
+
+#create prox CT subset
+Leakctvarprox<-c(52, 53, 66, 67, 68, 69, 70, 82)
+
+CT_subsetprox<-subset(TAA[, Leakctvarprox])
+names(CT_subsetprox)
+
+
+#create distal CT subset
+Leakctvardist<-c(54, 55, 71, 72, 73, 83)
+
+CT_subsetdist<-subset(TAA[, Leakctvardist])
+names(CT_subsetdist)
+
+names(TAA)
+
+
+#compare survival according to reintervetion status -- does not appear to be very informative... causes of death not known...
+
+compreinterv <- survfit(Surv(Months_Surv_FU, Survival2) ~ Reinterv2, data = TAA)
+
+ggsurvplot(fit = compreinterv,
+           xlab = "Months following TEVAR",
+           ylab = "Overall Survival Probability",
+           title = "Survival",
+           risk.table = TRUE,
+           tables.theme = theme_cleantable(),
+           palette = "lancet",
+           xlim = c(0,120),
+           risk.table.height = 0.15,
+           legend = "none",
+           ggtheme = theme_bw())
+
+summary(compreinterv, times = c(12, 60, 120))
+
+reintervsurv<-survdiff(Surv(Months_Surv_FU, Survival2)~Reinterv2, data = TAA, na.action = "na.omit")
+summary(reintervsurv)
+
+
+#comparison of survival according to leak status 
+
+compleak <- survfit(Surv(Months_Surv_FU, Survival2) ~ Endoleak2, data = TAA)
+
+ggsurvplot(fit = compleak,
+           xlab = "Months following TEVAR",
+           ylab = "Overall Survival Probability",
+           title = "Survival",
+           risk.table = TRUE,
+           tables.theme = theme_cleantable(),
+           palette = "lancet",
+           xlim = c(0,120),
+           risk.table.height = 0.15,
+           legend = "none",
+           ggtheme = theme_bw())
+
+compleakdiff<-survdiff(Surv(Months_Surv_FU, Survival2)~Endoleak2, data = TAA, na.action = "na.omit")
+compleakdiff
+
+#comparison of reintervention according to leak status  # cave die mit ENdoleak2 ist falsch
+
+leakreinterv<-survfit(Surv(Months_Reinterv_FU, Reinterv2)~Endoleak2, data = TAA)
+
+TAA$postOP_any_endoleak <- recode_factor(TAA$Endoleak_First_CT, '0'="0", 'Typ 1a'="1", 'Typ 1b'="1", 'Typ 2'="1", 'Typ 3'="1")
+leakreinterv2 <-survfit(Surv(Months_Reinterv_FU, Reinterv2)~postOP_any_endoleak, data = TAA)
+  
+ggsurvplot(fit = leakreinterv2,
+           xlab = "Months following TEVAR",
+           ylab = "Freedom from Reintervention",
+           title = "Reintervention",
+           risk.table = TRUE,
+           tables.theme = theme_cleantable(),
+           palette = "lancet",
+           xlim = c(0,120),
+           risk.table.height = 0.15,
+           legend = "none", 
+           fun = "event",
+           ggtheme = theme_bw())
+
+leakreintervdiff<-survdiff(Surv(Months_Reinterv_FU, Reinterv2)~postOP_any_endoleak, data = TAA, na.action = "na.omit")
+leakreintervdiff
+
+TAA$genetic <- recode(TAA$Marfans_GeneticDx, '1'="1",'4'="1", '7'="0")
+
+
+#cox univariate for survival 
+# alle andern variabeln einmal auf SPSS durchgecheckt auch CT parameter
+
+cox_age<-coxph(Surv(Months_Surv_FU, Survival2)~TAA$Age, data = TAA, na.action = "na.omit")
+summary(cox_age)
+
+cox_gender<-coxph(Surv(Months_Surv_FU, Survival2)~TAA$Gender, data = TAA, na.action = "na.omit")
+summary(cox_gender)
+
+cox_bmi<-coxph(Surv(Months_Surv_FU, Survival2)~TAA$BMI, data = TAA, na.action = "na.omit")
+summary(cox_bmi)
+
+cox_AAS<-coxph(Surv(Months_Surv_FU, Survival2)~TAA$AAS, data = TAA, na.action = "na.omit")
+summary(cox_AAS)
+
+cox_nyha<-coxph(Surv(Months_Surv_FU, Survival2)~TAA$NYHA, data = TAA, na.action = "na.omit")
+summary(cox_nyha)
+
+TAA$Afib_fl <- recode_factor(TAA$Pre_op_Rhythm, '1'="0", '2'="1", '3'="0", '6'="0", '8'="0", '9'="0", '10'="1",'11'="0")
+cox_Afib_fl<-coxph(Surv(Months_Surv_FU, Survival2)~TAA$Afib_fl, data = TAA, na.action = "na.omit")
+summary(cox_Afib_fl)
+
+cox_hypertension <- coxph(Surv(Months_Surv_FU, Survival2)~TAA$HTN, data = TAA, na.action = "na.omit")
+summary(cox_hypertension)
+
+cox_copd <- coxph(Surv(Months_Surv_FU, Survival2)~TAA$COPD, data = TAA, na.action = "na.omit")
+summary(cox_copd)
+
+cox_myocardial_infarction <- coxph(Surv(Months_Surv_FU, Survival2)~TAA$MI, data = TAA, na.action = "na.omit")
+summary(cox_myocardial_infarction)
+
+cox_reop <- coxph(Surv(Months_Surv_FU, Survival2)~TAA$Re_OP_Aorta, data = TAA, na.action = "na.omit")
+summary(cox_reop)
+
+cox_exact_lvef <- coxph(Surv(Months_Surv_FU, Survival2)~TAA$Exact_VLEF, data = TAA, na.action = "na.omit")
+summary(cox_exact_lvef)
+
+cox_crea<-coxph(Surv(Months_Surv_FU, Survival2)~TAA$Creatinine, data = TAA, na.action = "na.omit")
+summary(cox_crea)
+
+cox_GFR<-coxph(Surv(Months_Surv_FU, Survival2)~TAA$GFR, data = TAA, na.action = "na.omit")
+summary(cox_GFR)
+
+cox_euro<-coxph(Surv(Months_Surv_FU, Survival2)~TAA$Euroscore2, data = TAA, na.action = "na.omit")
+summary(cox_euro)
+
+cox_log<-coxph(Surv(Months_Surv_FU, Survival2)~TAA$Log_Euroscore, data = TAA, na.action = "na.omit")
+summary(cox_log)
+
+cox_diam<-coxph(Surv(Months_Surv_FU, Survival2)~TAA$Aneur_diam, data = TAA, na.action = "na.omit")
+summary(cox_diam)
+
+cox_thromb<-coxph(Surv(Months_Surv_FU, Survival2)~TAA$Thromb_vol, data = TAA, na.action = "na.omit")
+summary(cox_thromb)
+
+cox_prior_stroke<-coxph(Surv(Months_Surv_FU, Survival2)~TAA$stroke1, data = TAA, na.action = "na.omit")
+summary(cox_prior_stroke)
+
+TAA$CAD <- recode_factor(TAA$CAD, '1'="1", '2'="1", '3'="1", '4'="1", '5'="0")
+cox_CAD <- coxph(Surv(Months_Surv_FU, Survival2)~TAA$CAD, data = TAA, na.action = "na.omit")
+summary(cox_CAD)
+table(TAA$CAD)
+
+table(TAA$operative_urgency)
+
+#multivariate cox for survival
+TAA$stroke1 <- recode_factor(TAA$Stroke, '1'="1", '4'="0")
+show(TAA$stroke1)
+multi_cox<-coxph(Surv(Months_Surv_FU, Survival2)~TAA$Age+TAA$BMI+TAA$LVEF+TAA$NYHA+TAA$GFR+TAA$stroke1+TAA$Aneur_diam+TAA$Euroscore2, data = TAA, na.action = "na.omit")
+summary(multi_cox)
+
+#multivariate cox for survival - new
+TAA$stroke1 <- recode_factor(TAA$Stroke, '1'="1", '4'="0")
+show(TAA$stroke1)
+multi_cox<-coxph(Surv(Months_Surv_FU, Survival2)~TAA$Age+TAA$BMI+TAA$LVEF+TAA$NYHA+TAA$GFR+TAA$Thromb_vol+TAA$Aneur_diam+TAA$Euroscore2, data = TAA, na.action = "na.omit")
+summary(multi_cox)
+
+
+
+# show the six patients with prior stroke: SN 62, 65, 67, 100, 147, 155
+table(TAA$stroke1)
+subset_patients_with_prior_stroke <- subset(TAA, TAA$stroke1==1)
+show(subset_patients_with_prior_stroke)
+
+
+##################### zu AAS 
+
+# cox model: overall survival not siginificantly different
+cox_AAS<-coxph(Surv(Months_Surv_FU, Survival2)~TAA$AAS, data = TAA, na.action = "na.omit")
+summary(cox_AAS)
+
+# survival for patients without AAS
+subset_withoutAAS <- subset(TAA, AAS == 0)
+Surv_withoutAAS <- survfit(Surv(Months_Surv_FU, Survival2) ~ 1, data = subset_withoutAAS)
+summary(Surv_withoutAAS, times = c(0.99, 11.99, 35.99, 59.99, 95.99, 119.99))
+
+#survival for patients with AAS
+subset_withAAS <- subset(TAA, AAS == 1)
+Surv_withAAS <- survfit(Surv(Months_Surv_FU, Survival2) ~ 1, data = subset_withAAS)
+summary(Surv_withAAS, times = c(0.99, 11.99, 35.99, 59.99, 95.99, 119.99))
+
+#plot survival curve of patients with and without AAS
+compareAAS <- survfit(Surv(exact_Years_Surv_FU, Survival2) ~ AAS, data = TAA)
+
+ggsurvplot(fit = compareAAS,
+           xlab = "years after TEVAR",
+           ylab = "overall survival",
+           title = "acute aortic syndrome (AAS) and survival",
+           risk.table = TRUE,
+           tables.theme = theme_cleantable(),
+           palette = "lancet",
+           xlim = c(0,10),
+           risk.table.height = 0.15,
+           font.title = c(28,"bold"),
+           fontsize=6,
+           font.x=16,
+           font.y=16,
+           font.legend=16,
+           break.x.by=2,
+           legend=c(0.8,0.9),
+           legend.labs=c("no AAS", "with AAS"))
+
+#compare survival at fixes points, set timepoint by t0 
+Fixpoint.test(TAA$Months_Surv_FU, TAA$Survival, TAA$AAS, t0=c(120))
+
+# crosspoint test - der zeigt nur schnittpunkt der beiden kurven
+crosspoint(TAA$Months_Surv_FU, TAA$Survival,TAA$AAS)
+
+# short test - differene in survival before a set time point, t0 ist time point
+Short.test(TAA$Months_Surv_FU, TAA$Survival, TAA$AAS, t0=60)
+
+
+# recode proximal landing zones: 0 ist zone 1 or 2, 1 ist zone 3 or 4
+# das muss noch oben ins msdata format hinzugef?gt werden
+TAA$prox_LZ <- recode(TAA$prox_landing_zone, '1'="0", '2'="0", '3'="1", '4'="1")
+TAA$prox_LZ <- as.numeric(TAA$prox_LZ)
+
+####################################################
+
+# competing outcome analysis reintervention 
+
+### 1 competing risk f?r analysis of transistion specific covariates
+# copy data for ms model preparation steps
+data_cr_model <- TAA
+
+# show those who have short reintervention follow up with status == 0 and longer survival follow up with status ==1
+data_cr_model$count <- ifelse(data_cr_model$Survival==1 & data_cr_model$Reinterv==0 & data_cr_model$exact_Years_Reinterv_FU < data_cr_model$exact_Years_Surv_FU, TRUE, FALSE)
+
+# change survival status and time for those 55 patients to Survival Status = 0 and Surv Follow up = Reintervn Follow up
+# cave jetzt keine survival analysis mehr mit dem dataframe, es ist nur noch transiion 1 clean
+data_cr_model$exact_Years_Surv_FU <- ifelse(data_cr_model$count==TRUE, data_cr_model$exact_Years_Reinterv_FU, data_cr_model$exact_Years_Surv_FU)
+data_cr_model$Survival <- ifelse(data_cr_model$count==TRUE, 0, data_cr_model$Survival)
+
+# transition matrix with possible paths: 
+transition_matrix <- transMat(list(c(2,3), c(3), c()), names=c("Tx", "reintervention", "death"))
+show(transition_matrix)
+show(data_cr_model$Survival)
+
+# debugging ensure correct column data types 
+data_cr_model$Survival <- as.numeric(data_cr_model$Survival)
+data_cr_model$Reinterv <- as.numeric(data_cr_model$Reinterv)
+data_cr_model$exact_Years_Surv_FU <- as.numeric(data_cr_model$exact_Years_Surv_FU)
+data_cr_model$exact_Years_Reinterv_FU <- as.numeric(data_cr_model$exact_Years_Reinterv_FU)
+
+# check for NAs
+data_cr_model <- data_cr_model[!is.na(data_cr_model$Reinterv),]
+data_cr_model <- data_cr_model[!is.na(data_cr_model$Survival),]
+data_cr_model <- data_cr_model[!is.na(data_cr_model$exact_Years_Surv_FU),]
+data_cr_model <- data_cr_model[!is.na(data_cr_model$exact_Years_Reinterv_FU),]
+
+# prepare data in msdata-format; use msprep(), add covariates to keep in later cox regression (cave)
+msdata <- msprep(
+  time=c(NA, "exact_Years_Reinterv_FU", "exact_Years_Surv_FU"),
+  status=c(NA, "Reinterv", "Survival"),
+  data = as.data.frame(data_cr_model),
+  trans = transition_matrix,
+  id="SN",
+  keep = c("AAS", "prox_LZ", "Adjuvant_Proc", "Duration", "Contrast", "Re_OP_Aorta", "Fluro_Time", "DAP", "OVP_diam", "OVP_area", "OVD_diam", "OVD_area", "TA_turtiosity", "prox_landing_zone", "distal_landing_zone", "Comb_Length", "Aneur_length", "Aneur_diam", "Aneur_volume", "Thromb_vol", "PDLZ_length", "PDLZ_inner_length", "PDLZ_outer_length", "PDLZ_curv", "PDLZ_ovality", "DDLZ_length", "DDLZ_curv", "DDLZ_ovality")
+)
+
+# expand covariates on the basis of msdata
+# cave covariates must be included in msdata-set msprep(funktion) oben, sonst funktioniert es nicht
+msdata <- expand.covs(msdata, covs=c("AAS", "prox_LZ", "Adjuvant_Proc", "Duration", "Re_OP_Aorta", "Contrast", "Fluro_Time", "DAP", "OVP_diam", "OVP_area", "OVD_diam", "OVD_area", "prox_landing_zone", "distal_landing_zone", "TA_turtiosity", "Comb_Length", "Aneur_length", "Aneur_diam", "Aneur_volume", "Thromb_vol", "PDLZ_length", "PDLZ_inner_length", "PDLZ_outer_length", "PDLZ_curv", "PDLZ_ovality", "DDLZ_length", "DDLZ_curv", "DDLZ_ovality"), append=TRUE, longnames = FALSE)
+
+# check msdata if expanding worked for all variables
+# expanded data type for covariates is same as in the transition matrix aboth
+# .1 transition Tx -> Reinterv
+# .2 transition Tx -> death
+# .3 transition Reinterv -> death
+glimpse(msdata)
+
+#debugging insure correct data types for Tstart, Tstop, status in msdata
+msdata$Tstart <- as.numeric(msdata$Tstart) 
+msdata$Tstop <- as.numeric(msdata$Tstop)
+msdata$status <- as.numeric(msdata$status)
+
+# show those were Tstart = Tstop 
+msdata_filter <- filter(msdata, Tstart>=Tstop)
+show(msdata_filter)
+
+# patients with SN 28 and SN 57 (both no zero reintervention follow up therefore Tstart = Tstop)
+# patient wurde nach OP am selben Tag in Zuweiser KH ?berwiesen und es gibt kein Reinterv Follow up
+# na.action ist bei der coxph function eh by default auf na.omit; deswegen wird der in der sp?teren Analyse ignoriert
+
+# exclude SN 28 and SN 57 from analysis
+msdata <- subset(msdata, msdata$SN != 28 & msdata$SN != 57)
+
+# check if it worked
+print(msdata$SN)
+
+# transition specific cox regression 
+# cave nur transition 1 ist clean
+
+#nein
+cox_cr_AAS <- coxph(formula = Surv(Tstart, Tstop, status) ~ AAS.1 + strata(trans), data = msdata)
+summary(cox_cr_AAS)
+
+#ja
+cox_cr_duration <- coxph(formula = Surv(Tstart, Tstop, status) ~ Duration.1 + strata(trans), data = msdata)
+summary(cox_cr_duration)
+
+#nein
+cox_cr_debranching <- coxph(formula = Surv(Tstart, Tstop, status) ~ Adjuvant_Proc.1 + strata(trans), data = msdata)
+summary(cox_cr_debranching)
+
+#ja
+cox_cr_contrast <- coxph(Surv(Tstart, Tstop, status) ~ Contrast.1 + strata(trans), data = msdata)
+summary(cox_cr_contrast)
+
+#ja
+cox_cr_fluro <- coxph(formula = Surv(Tstart, Tstop, status) ~ Fluro_Time.1 + strata(trans), data = msdata)
+summary(cox_cr_fluro)
+
+#ja
+cox_cr_DAP <- coxph(formula = Surv(Tstart, Tstop, status) ~ DAP.1 + strata(trans), data = msdata)
+summary(cox_cr_DAP)
+
+#nein
+cox_cr_stent_length<- coxph(formula = Surv(Tstart, Tstop, status) ~ Comb_Length + strata(trans), data = msdata)
+summary(cox_cr_stent_length)
+
+#nein
+cox_cr_reOP <- coxph(formula = Surv(Tstart, Tstop, status) ~ Re_OP_Aorta.1 + strata(trans), data = msdata)
+summary(cox_cr_reOP)
+
+# CT parameters generell + aneurysm
+
+#nein
+cox_cr_Aneur_length<- coxph(formula = Surv(Tstart, Tstop, status) ~ Aneur_length.1 + strata(trans), data = msdata)
+summary(cox_cr_Aneur_length)
+
+#ja
+cox_cr_Aneur_diam<- coxph(formula = Surv(Tstart, Tstop, status) ~ Aneur_diam.1 + strata(trans), data = msdata)
+summary(cox_cr_Aneur_diam)
+
+#nein
+cox_cr_Aneur_volume<- coxph(formula = Surv(Tstart, Tstop, status) ~ Aneur_volume.1 + strata(trans), data = msdata)
+summary(cox_cr_Aneur_volume)
+
+#nein
+cox_cr_Thromb_vol<- coxph(formula = Surv(Tstart, Tstop, status) ~ Thromb_vol.1 + strata(trans), data = msdata)
+summary(cox_cr_Thromb_vol)
+
+#nein
+cox_cr_turtiosity <- coxph(formula = Surv(Tstart, Tstop, status) ~ TA_turtiosity.1 + strata(trans), data = msdata)
+summary(cox_cr_turtiosity)
+
+
+
+# Ct parameters proximal #####
+
+#nein
+cox_cr_PDLZ_length <- coxph(formula = Surv(Tstart, Tstop, status) ~ PDLZ_length.1 + strata(trans), data = msdata)
+summary(cox_cr_PDLZ_length)
+
+#nein
+cox_cr_PDLZ_inner_length <- coxph(formula = Surv(Tstart, Tstop, status) ~ PDLZ_inner_length.1 + strata(trans), data = msdata)
+summary(cox_cr_PDLZ_inner_length)
+
+#nein
+cox_cr_PDLZ_outer_length <- coxph(formula = Surv(Tstart, Tstop, status) ~ PDLZ_outer_length.1 + strata(trans), data = msdata)
+summary(cox_cr_PDLZ_outer_length)
+
+#nein
+cox_cr_PDLZ_curv <- coxph(formula = Surv(Tstart, Tstop, status) ~ PDLZ_curv.1 + strata(trans), data = msdata)
+summary(cox_cr_PDLZ_curv)
+
+#nein
+cox_cr_PDLZ_ovality <- coxph(formula = Surv(Tstart, Tstop, status) ~ PDLZ_ovality.1 + strata(trans), data = msdata)
+summary(cox_cr_PDLZ_ovality)
+
+#nein
+cox_cr_OVP_diam <- coxph(formula = Surv(Tstart, Tstop, status) ~ OVP_diam.1 + strata(trans), data = msdata)
+summary(cox_cr_OVP_diam)
+
+#nein
+cox_cr_OVP_area <- coxph(formula = Surv(Tstart, Tstop, status) ~ OVP_area.1 + strata(trans), data = msdata)
+summary(cox_cr_OVP_area)
+
+
+# Ct parameteres distal
+
+#nein
+cox_cr_DDLZ_length <- coxph(formula = Surv(Tstart, Tstop, status) ~ DDLZ_length.1 + strata(trans), data = msdata)
+summary(cox_cr_DDLZ_length)
+
+#nein
+cox_cr_DDLZ_curv <- coxph(formula = Surv(Tstart, Tstop, status) ~ DDLZ_curv.1 + strata(trans), data = msdata)
+summary(cox_cr_DDLZ_curv)
+
+#nein
+cox_cr_OVD_ovality <- coxph(formula = Surv(Tstart, Tstop, status) ~ DDLZ_ovality.1 + strata(trans), data = msdata)
+summary(cox_cr_OVD_ovality)
+
+#nein
+cox_cr_OVD_diam <- coxph(formula = Surv(Tstart, Tstop, status) ~ OVD_diam.1 + strata(trans), data = msdata)
+summary(cox_cr_OVD_diam)
+
+#nein
+cox_cr_OVD_area <- coxph(formula = Surv(Tstart, Tstop, status) ~ OVD_area.1 + strata(trans), data = msdata)
+summary(cox_cr_OVD_area)
+
+
+####################################################
+
+# competing outcome analysis reintervention and survival
+
+# copy data for ms model preparation steps
+data_cr_model_survival <- TAA
+
+# debugging ensure correct column data types 
+data_cr_model_survival$Survival <- as.numeric(data_cr_model_survival$Survival)
+data_cr_model_survival$Reinterv <- as.numeric(data_cr_model_survival$Reinterv)
+data_cr_model_survival$exact_Years_Surv_FU <- as.numeric(data_cr_model_survival$exact_Years_Surv_FU)
+data_cr_model_survival$exact_Years_Reinterv_FU <- as.numeric(data_cr_model_survival$exact_Years_Reinterv_FU)
+
+data_cr_model_survival <- data_cr_model_survival[!is.na(data_cr_model_survival$Reinterv),]
+data_cr_model_survival <- data_cr_model_survival[!is.na(data_cr_model_survival$Survival),]
+data_cr_model_survival <- data_cr_model_survival[!is.na(data_cr_model_survival$exact_Years_Reinterv_FU),]
+data_cr_model_survival <- data_cr_model_survival[!is.na(data_cr_model_survival$exact_Years_Surv_FU),]
+
+
+data_cr_model_survival <- data_cr_model_survival %>%
+  filter(Months_Reinterv_FU < Months_Surv_FU) %>%
+  dplyr::select(SN, Reinterv, Survival, exact_Years_Reinterv_FU, exact_Years_Surv_FU, everything())
+
+
+# prepare data in msdata-format; use msprep(), add covariates to keep in later cox regression (cave)
+msdata_survival <- msprep(
+  time=c(NA, "exact_Years_Reinterv_FU", "exact_Years_Surv_FU"),
+  status=c(NA, "Reinterv", "Survival"),
+  data = as.data.frame(data_cr_model_survival),
+  trans = transition_matrix,
+  id="SN")
+
+#debugging insure correct data types for Tstart, Tstop, status in msdata
+msdata_survival$Tstart <- as.numeric(msdata_survival$Tstart) 
+msdata_survival$Tstop <- as.numeric(msdata_survival$Tstop)
+msdata_survival$status <- as.numeric(msdata_survival$status)
+
+# patients with SN 28  (both no zero reintervention follow up therefore Tstart = Tstop)
+# patient wurde nach OP am selben Tag in Zuweiser KH ?berwiesen und es gibt kein Reinterv Follow up
+# na.action ist bei der coxph function eh by default auf na.omit; deswegen wird der in der sp?teren Analyse ignoriert
+
+# exclude SN 28 from analysis
+
+msdata_survival <- subset(msdata_survival, msdata_survival$SN != 28)
+
+c02 <- coxph(Surv(Tstart, Tstop, status) ~ strata(trans), data = msdata_survival)
+msf02 <- msfit(object = c02, vartype = "greenwood", trans = transition_matrix)
+plot(msf02)
+
+# colorspace package for plots
+library(colorspace)
+statecols <- heat_hcl(3,
+                      c = c(80, 30),
+                      l = c(30, 90),
+                      power = c(1/5, 2)) [c(3, 2, 1)]
+ord <- c(1, 2, 3)
+
+# hier kann man ?ber predt als starting date ?ndern -Einheit ist Jahre
+ptx <- probtrans(msf02, predt = 2 , method = "greenwood")
+
+# death probabilities for starting at state 1 (ohne Reintervention)
+summary(ptx, from=1, times=c(1.5,3.5,5.5,10.5))
+plot(ptx, ord = ord,
+     xlab = "years after TEVAR",
+     xlim = c(2,8),
+     ylab = "state probabilities",
+     las = 1,
+     type = "filled",
+     col = statecols[ord],
+     main="patients that did not require aortic reintervention in the first two years",
+     sub="possible states: alive without reintervention (green) or alive with reintervention (orange) or dead (red)")
+
+#death probabilties for starting at state 2 (nach Reintervention)
+
+summary(ptx, from=2, times=c(1.5,3.5,5.5,10.5))
+plot(ptx, 
+     from = 2,
+     ord = ord,
+     xlim = c(2,8),
+     xlab = "years after TEVAR",
+     ylab = "state probabilities",
+     las = 1,
+     type = "filled",
+     col = statecols[ord],
+     main="patients that did require aortic reintervention in the first two years",
+     sub="possible states: alive with reintervention (orange) or dead (red)")
+
+
+
+# mstate - show characteristics of the groups aboth
+
+table(TAA$Reinterv)
+
+# check how the patients above were initially (primary result)
+table(TAA$Endoleak_First_CT)
+
+# recode primary endoleak in no (0) und yes (1)
+TAA$primary_endoleak <- recode_factor(TAA$Endoleak_First_CT, '0'="0", 'Typ 1a'="1", 'Typ 1b'="1", 'Typ 2'="1", 'Typ 3'="1")
+table(TAA$primary_endoleak)
+
+#for six months
+TAA$TAA_reinterv_at_six_months  <- ifelse(TAA$Reinterv==1 & TAA$exact_Years_Reinterv_FU <= 0.5, 1, 0)
+table(TAA$TAA_reinterv_at_six_months)
+subset_reinterv_at_six_months_yes <- subset(TAA, TAA$TAA_reinterv_at_six_months==1)
+subset_reinterv_at_six_months_no <- subset(TAA, TAA$TAA_reinterv_at_six_months==0)
+
+#endoleaks in patients that had no reintervention at six months
+table(subset_reinterv_at_six_months_no$Endoleak_First_CT)
+
+#endoleaks in patients that had  reintervention at six months
+table(subset_reinterv_at_six_months_yes$Endoleak_First_CT)
+
+#check if hat difference is significant
+chisq.test(TAA$TAA_reinterv_at_six_months, TAA$primary_endoleak)
+fisher.test(TAA$TAA_reinterv_at_six_months, TAA$primary_endoleak)
+#difference is significant wit p<0.001
+
+#aneurysm size in patinets that had no reinetrvention at six months
+describe(subset_reinterv_at_six_months_no$Aneur_diam, quant=c(0.25, 0.75))
+describe(subset_reinterv_at_six_months_no$Aneur_length, quant=c(0.25, 0.75) )
+describe(subset_reinterv_at_six_months_no$Aneur_volume, quant=c(0.25, 0.75))
+
+#aneurysm size in patients that had reinterv at six months
+describe(subset_reinterv_at_six_months_yes$Aneur_diam, quant=c(0.25, 0.75))
+describe(subset_reinterv_at_six_months_yes$Aneur_length, quant=c(0.25, 0.75))
+describe(subset_reinterv_at_six_months_yes$Aneur_volume, quant=c(0.25, 0.75))
+
+#check if those differences are significant - shapiro wilk p<0.05 nicht normalverteilt
+shapiro.test(subset_reinterv_at_six_months_no$Aneur_diam)
+shapiro.test(subset_reinterv_at_six_months_no$Aneur_length)
+shapiro.test(subset_reinterv_at_six_months_no$Aneur_volume)
+shapiro.test(subset_reinterv_at_six_months_yes$Aneur_diam)
+shapiro.test(subset_reinterv_at_six_months_yes$Aneur_length)
+shapiro.test(subset_reinterv_at_six_months_yes$Aneur_volume)
+
+#wilcox
+wilcox.test(TAA$Aneur_diam ~ TAA$TAA_reinterv_at_six_months)
+wilcox.test(TAA$Aneur_length ~ TAA$TAA_reinterv_at_six_months)
+wilcox.test(TAA$Aneur_volume ~ TAA$TAA_reinterv_at_six_months)
+
+#for two years
+TAA$TAA_reinterv_at_two_years  <- ifelse(TAA$Reinterv==1 & TAA$exact_Years_Reinterv_FU <= 2, 1, 0)
+table(TAA$TAA_reinterv_at_two_years)
+subset_reinterv_at_two_years_yes <- subset(TAA, TAA$TAA_reinterv_at_two_years==1)
+subset_reinterv_at_two_years_no <- subset(TAA, TAA$TAA_reinterv_at_two_years==0)
+
+#endoleaks in patients that had no reintervention at two years
+table(subset_reinterv_at_two_years_no$Endoleak_First_CT)
+
+#endoleaks in patients that had  reintervention at two years
+table(subset_reinterv_at_two_years_yes$Endoleak_First_CT)
+
+#check if hat difference is significant
+chisq.test(TAA$TAA_reinterv_at_two_years, TAA$primary_endoleak)
+fisher.test(TAA$TAA_reinterv_at_two_years, TAA$primary_endoleak)
+#difference is significant wit p<0.001
+
+#aneurysm size in patinets that had no reinetrvention at two years
+describe(subset_reinterv_at_two_years_no$Aneur_diam, quant=c(0.25, 0.75))
+describe(subset_reinterv_at_two_years_no$Aneur_length, quant=c(0.25, 0.75))
+describe(subset_reinterv_at_two_years_no$Aneur_volume, quant=c(0.25, 0.75))
+
+#aneurysm size in patients that had reinterv at two years
+describe(subset_reinterv_at_two_years_yes$Aneur_diam, quant=c(0.25, 0.75))
+describe(subset_reinterv_at_two_years_yes$Aneur_length, quant=c(0.25, 0.75))
+describe(subset_reinterv_at_two_years_yes$Aneur_volume, quant=c(0.25, 0.75))
+
+#check if those differences are significant - shapiro wilk p<0.05 nicht normalverteilt
+shapiro.test(subset_reinterv_at_two_years_no$Aneur_diam)
+shapiro.test(subset_reinterv_at_two_years_no$Aneur_length)
+shapiro.test(subset_reinterv_at_two_years_no$Aneur_volume)
+shapiro.test(subset_reinterv_at_two_years_yes$Aneur_diam)
+shapiro.test(subset_reinterv_at_two_years_yes$Aneur_length)
+shapiro.test(subset_reinterv_at_two_years_yes$Aneur_volume)
+
+#wilcox
+wilcox.test(TAA$Aneur_diam ~ TAA$TAA_reinterv_at_two_years)
+wilcox.test(TAA$Aneur_length ~ TAA$TAA_reinterv_at_two_years)
+wilcox.test(TAA$Aneur_volume ~ TAA$TAA_reinterv_at_two_years)
+
+
+
+
+
+
+####### landing zones nochmal
+
+#prox landing zone - nein
+cox_cr_prox_LZ <- coxph(formula = Surv(Tstart, Tstop, status) ~ prox_LZ.1 + strata(trans), data = msdata)
+summary(cox_cr_prox_LZ)
+
+count(TAA$prox_LZ)
+
+
+### wilcoxon f?r endoleaks + descriptive
+
+##### neu CT Parameter und Endoleaks up to six months
+data_CT_parameters <- TAA
+
+# show
+table(data_CT_parameters$endoleak_six_months)
+table(data_CT_parameters$Endoleak_First_CT)
+
+# recode
+data_CT_parameters$all_endoleaks_six_months <- recode_factor(data_CT_parameters$endoleak_six_months, '0'="0", 'Typ 1a'="1", 'Typ 1b'="1", 'Typ 2'="1", 'Typ 3'="1", na.action = "na.omit")
+data_CT_parameters$typ2_endoleak_six_months <- recode_factor(data_CT_parameters$endoleak_six_months, '0'="0", 'Typ 1a'="0", 'Typ 1b'="0", 'Typ 2'="1", 'Typ 3'="0")
+data_CT_parameters$typ1a_endoleak_six_months <- recode_factor(data_CT_parameters$endoleak_six_months, '0'="0", 'Typ 1a'="1", 'Typ 1b'="0", 'Typ 2'="0", 'Typ 3'="0")
+data_CT_parameters$typ1b_endoleak_six_months <- recode_factor(data_CT_parameters$endoleak_six_months, '0'="0", 'Typ 1a'="0", 'Typ 1b'="1", 'Typ 2'="0", 'Typ 3'="0")
+table(data_CT_parameters$all_endoleaks_six_months)
+
+# all endoleaks - volume
+wilcox.test(data_CT_parameters$Aneur_length ~ data_CT_parameters$all_endoleaks_six_months)
+wilcox.test(data_CT_parameters$Aneur_diam ~ data_CT_parameters$all_endoleaks_six_months)
+wilcox.test(data_CT_parameters$Aneur_volume ~ data_CT_parameters$all_endoleaks_six_months)
+wilcox.test(data_CT_parameters$Thromb_vol ~ data_CT_parameters$all_endoleaks_six_months)
+wilcox.test(data_CT_parameters$TA_turtiosity ~ data_CT_parameters$all_endoleaks_six_months)
+
+# typ 1a - nix
+wilcox.test(data_CT_parameters$PDLZ_length ~ data_CT_parameters$typ1a_endoleak_six_months)
+wilcox.test(data_CT_parameters$PDLZ_inner_length ~ data_CT_parameters$typ1a_endoleak_six_months)
+wilcox.test(data_CT_parameters$PDLZ_outer_length ~ data_CT_parameters$any_1a_endoleak)
+wilcox.test(data_CT_parameters$PDLZ_curv ~ data_CT_parameters$typ1a_endoleak_six_months)
+wilcox.test(data_CT_parameters$PDLZ_ovality ~ data_CT_parameters$typ1a_endoleak_six_months)
+wilcox.test(data_CT_parameters$OVP_diam ~ data_CT_parameters$typ1a_endoleak_six_months)
+wilcox.test(data_CT_parameters$OVP_area ~ data_CT_parameters$typ1a_endoleak_six_months)
+wilcox.test(data_CT_parameters$prox_LZ ~ data_CT_parameters$typ1a_endoleak_six_months)
+table(data_CT_parameters$prox_LZ)
+
+# typ 1b - distal oversizing via diam and area
+wilcox.test(data_CT_parameters$PDLZ_length ~ data_CT_parameters$typ1b_endoleak_six_months)
+wilcox.test(data_CT_parameters$DDLZ_curv ~ data_CT_parameters$typ1b_endoleak_six_months)
+wilcox.test(data_CT_parameters$DDLZ_ovality ~ data_CT_parameters$typ1b_endoleak_six_months)
+wilcox.test(data_CT_parameters$OVD_diam ~ data_CT_parameters$typ1b_endoleak_six_months)
+wilcox.test(data_CT_parameters$OVD_area ~ data_CT_parameters$typ1b_endoleak_six_months)
+wilcox.test(data_CT_parameters$distal_landing_zone ~ data_CT_parameters$typ1b_endoleak_six_months)
+
+# typ 2 - nix
+wilcox.test(data_CT_parameters$Aneur_length ~ data_CT_parameters$typ2_endoleak_six_months)
+wilcox.test(data_CT_parameters$Aneur_diam ~ data_CT_parameters$typ2_endoleak_six_months)
+wilcox.test(data_CT_parameters$Aneur_volume ~ data_CT_parameters$typ2_endoleak_six_months)
+wilcox.test(data_CT_parameters$Thromb_vol ~ data_CT_parameters$typ2_endoleak_six_months)
+wilcox.test(data_CT_parameters$TA_turtiosity ~ data_CT_parameters$typ2_endoleak_six_months)
+wilcox.test(data_CT_parameters$PDLZ_length ~ data_CT_parameters$typ2_endoleak_six_months)
+wilcox.test(data_CT_parameters$PDLZ_inner_length ~ data_CT_parameters$typ2_endoleak_six_months)
+wilcox.test(data_CT_parameters$PDLZ_outer_length ~ data_CT_parameters$typ2_endoleak_six_months)
+wilcox.test(data_CT_parameters$PDLZ_curv ~ data_CT_parameters$typ2_endoleak_six_months)
+wilcox.test(data_CT_parameters$PDLZ_ovality ~ data_CT_parameters$typ2_endoleak_six_months)
+wilcox.test(data_CT_parameters$OVP_diam ~ data_CT_parameters$typ2_endoleak_six_months)
+wilcox.test(data_CT_parameters$OVP_area ~ data_CT_parameters$typ2_endoleak_six_months)
+wilcox.test(data_CT_parameters$PDLZ_length ~ data_CT_parameters$typ2_endoleak_six_months)
+wilcox.test(data_CT_parameters$DDLZ_curv ~ data_CT_parameters$typ2_endoleak_six_months)
+wilcox.test(data_CT_parameters$DDLZ_ovality ~ data_CT_parameters$typ2_endoleak_six_months)
+wilcox.test(data_CT_parameters$OVD_diam ~ data_CT_parameters$typ2_endoleak_six_months)
+wilcox.test(data_CT_parameters$OVD_area ~ data_CT_parameters$typ2_endoleak_six_months)
+
+# descriptive zu leaks  
+
+# create subset with patients without endoleak in six months 
+subset_six_months_all_endoleaks_no <- subset(data_CT_parameters, all_endoleaks_six_months == 0)
+
+describe(subset_six_months_all_endoleaks_no$Aneur_diam, quant=c(.25,.75))
+describe(subset_six_months_all_endoleaks_no$Aneur_length, quant=c(.25,.75))
+describe(subset_six_months_all_endoleaks_no$Aneur_volume, quant=c(.25,.75))
+describe(subset_six_months_all_endoleaks_no$Thromb_vol, quant=c(.25,.75))
+describe(subset_six_months_all_endoleaks_no$TA_turtiosity, quant=c(.25,.75))
+
+# create subset with patients with endoleak (all types) at six months
+subset_six_months_all_endoleaks_yes <- subset(data_CT_parameters, all_endoleaks_six_months == 1)
+
+describe(subset_six_months_all_endoleaks_yes$Aneur_diam, quant=c(.25,.75))
+describe(subset_six_months_all_endoleaks_yes$Aneur_length, quant=c(.25,.75))
+describe(subset_six_months_all_endoleaks_yes$Aneur_volume, quant=c(.25,.75))
+describe(subset_six_months_all_endoleaks_yes$Thromb_vol, quant=c(.25,.75))
+describe(subset_six_months_all_endoleaks_yes$TA_turtiosity, quant=c(.25,.75))
+
+# create subset with patients without 1a endoleak at six months
+subset_six_months_1a_endoleaks_no <- subset(data_CT_parameters, typ1a_endoleak_six_months == 0)
+
+describe(subset_six_months_1a_endoleaks_no$PDLZ_length, quant=c(.25,.75))
+describe(subset_six_months_1a_endoleaks_no$PDLZ_inner_length, quant=c(.25,.75))
+describe(subset_six_months_1a_endoleaks_no$PDLZ_outer_length, quant=c(.25,.75))
+describe(subset_six_months_1a_endoleaks_no$PDLZ_curv, quant=c(.25,.75))
+describe(subset_six_months_1a_endoleaks_no$PDLZ_ovality, quant=c(.25,.75))
+describe(subset_six_months_1a_endoleaks_no$OVP_diam, quant=c(.25,.75))
+describe(subset_six_months_1a_endoleaks_no$OVP_area, quant=c(.25,.75))
+
+# create subset with patients with 1a endoleak at six months
+subset_six_months_1a_endoleaks_yes <- subset(data_CT_parameters, typ1a_endoleak_six_months == 1)
+
+describe(subset_six_months_1a_endoleaks_yes$PDLZ_length, quant=c(.25,.75))
+describe(subset_six_months_1a_endoleaks_yes$PDLZ_inner_length, quant=c(.25,.75))
+describe(subset_six_months_1a_endoleaks_yes$PDLZ_outer_length, quant=c(.25,.75))
+describe(subset_six_months_1a_endoleaks_yes$PDLZ_curv, quant=c(.25,.75))
+describe(subset_six_months_1a_endoleaks_yes$PDLZ_ovality, quant=c(.25,.75))
+describe(subset_six_months_1a_endoleaks_yes$OVP_diam, quant=c(.25,.75))
+describe(subset_six_months_1a_endoleaks_yes$OVP_area, quant=c(.25,.75))
+
+# create subset with patients without 1b endoleak at six months
+subset_six_months_1b_endoleaks_no <- subset(data_CT_parameters, typ1b_endoleak_six_months == 0)
+
+describe(subset_six_months_1b_endoleaks_no$DDLZ_length, quant=c(.25,.75))
+describe(subset_six_months_1b_endoleaks_no$DDLZ_curv, quant=c(.25,.75))
+describe(subset_six_months_1b_endoleaks_no$DDLZ_ovality, quant=c(.25,.75))
+describe(subset_six_months_1b_endoleaks_no$OVD_diam, quant=c(.25,.75))
+describe(subset_six_months_1b_endoleaks_no$OVD_area, quant=c(.25,.75))
+
+# create subset with patients with 1b endoleaks
+subset_six_months_1b_endoleaks_yes <- subset(data_CT_parameters, typ1b_endoleak_six_months == 1)
+
+describe(subset_six_months_1b_endoleaks_yes$DDLZ_length, quant=c(.25,.75))
+describe(subset_six_months_1b_endoleaks_yes$DDLZ_curv, quant=c(.25,.75))
+describe(subset_six_months_1b_endoleaks_yes$DDLZ_ovality, quant=c(.25,.75))
+describe(subset_six_months_1b_endoleaks_yes$OVD_diam, quant=c(.25,.75))
+describe(subset_six_months_1b_endoleaks_yes$OVD_area, quant=c(.25,.75))
+
+
+####### reintervention rates according to year of TEVAR
+
+# show procedure date 
+print(TAA$OP_Date)
+
+# create year variable
+TAA$OP_year <- year(TAA$OP_Date)
+print(TAA$OP_year)
+
+# form groups: Group 1 2006-2012 und group 2 2013-2019
+TAA_group1 <- subset(TAA, TAA$OP_year <= 2012)
+TAA_group2 <- subset(TAA, TAA$OP_year >= 2013)
+
+# create one variable: 0=2006-2012, 1=2013-2019
+TAA$era_variable <- ifelse(TAA$OP_year <= 2012, 0, 1)
+
+#compare reintervention rates for those two groups
+
+reinterv_according_to_era <- survfit(Surv(exact_Years_Reinterv_FU, Reinterv2)~era_variable, data = TAA)
+ggsurvplot(fit = reinterv_according_to_era,
+           xlab = "years after TEVAR",
+           ylab = "freedom from reintervention",
+           title = "reintervention according to era",
+           font.title = c("20", "bold"),
+           risk.table = TRUE,
+           risk.table.title = "number at risk",
+           tables.theme = theme_cleantable(),
+           palette = "ricknmorty",
+           xlim = c(0,10),
+           risk.table.height = 0.15,
+           legend.labs = c("2006-2012","2013-2019"),
+           ggtheme = theme_bw(),
+           pval=TRUE)
+
+# show patients with reintervention at 30 days
+TAA_reinterv_30days <- subset(TAA, Reinterv==1 & Months_Reinterv_FU <= 0.99)
+print(TAA_reinterv_30days$SN)
+
+
+## calculate cut offs
+# cut off point for aortic diameter and any endoleak in the first six months
+data_CT_parameters2 <- TAA
+data_CT_parameters2$all_endoleaks_six_months <- recode_factor(data_CT_parameters2$endoleak_six_months, '0'="0", 'Typ 1a'="1", 'Typ 1b'="1", 'Typ 2'="1", 'Typ 3'="1", na.action = "na.omit")
+data_CT_parameters2$leaks_6_months <- recode_factor(data_CT_parameters2$all_endoleaks_six_months,
+                                                    '0'="no",
+                                                    '1'="yes")
+
+cp_diam <- cutpointr(data_CT_parameters2,
+                     Aneur_diam,
+                     all_endoleaks_six_months,
+                     method = maximize_metric,
+                     metric = sum_sens_spec,
+                     na.rm=TRUE)
+plot(cp_diam)
+plot_metric(cp_diam)
+
+# cut off oversizing and typ 1b endoleaks
+data_CT_parameters2$typ1b_endoleak_six_months <- recode_factor(data_CT_parameters2$endoleak_six_months, '0'="0", 'Typ 1a'="0", 'Typ 1b'="1", 'Typ 2'="0", 'Typ 3'="0")
+cp_oversizing_d <- cutpointr(data_CT_parameters2,
+                             OVD_diam,
+                             typ1b_endoleak_six_months,
+                             method = oc_youden_kernel,
+                             metric = sum_sens_spec,
+                             na.rm=TRUE)
+print(cp_oversizing_d)
+plot(cp_oversizing_d)
+plot_metric(cp_oversizing_d)
+
+
+
+
+# cut off analyse in cox - aneur diam für survival mit cutoff package
+cox_diam<-coxph(Surv(Months_Surv_FU, Survival) ~ Aneur_diam, data = TAA, na.action = "na.omit", x=TRUE)
+summary(cox_diam)
+time.ROC <- surv_cutpoint(
+  TAA,
+  time = "exact_Years_Surv_FU",
+  event = "Survival",
+  variables = "Aneur_diam",
+  minprop = 0.1
+)
+print(time.ROC)
+plot(time.ROC)
+
+# cut off in multivariate
+multi_cox <- coxph(Surv(Months_Surv_FU, Survival2)~TAA$Age+TAA$BMI+TAA$LVEF+TAA$NYHA+TAA$GFR+TAA$Thromb_vol+TAA$Aneur_diam+TAA$Euroscore2, data = TAA, na.action = "na.omit")
+summary(multi_cox)
+
+time.ROC.multi <- surv_cutpoint(
+  TAA,
+  time = "exact_Years_Surv_FU",
+  event = "Survival",
+  variables = c ("Aneur_diam", "Age", "BMI", "LVEF", "NYHA", "GFR", "Thromb_vol", "Euroscore2" ),
+  minprop = 0.1
+)
+print(time.ROC.multi)
+plot(time.ROC.multi)
+
+# cut off analysis reintervention
+cox_diam_r <- coxph(Surv(Months_Reinterv_FU, Reinterv) ~ Aneur_diam, data = TAA, na.action = "na.omit", x=TRUE)
+summary(cox_diam_r)
+
+time.ROC.reintervention <- surv_cutpoint(
+  TAA,
+  time = "exact_Years_Reinterv_FU",
+  event = "Reinterv",
+  variables = "Aneur_diam",
+  minprop = 0.1
+)
+print(time.ROC.reintervention)
+plot(time.ROC.reintervention)
+
+
+
+### plot for operative urgency
+library("varhandle")
+TAA$urgency <- recode_factor(TAA$operative_urgency, '1'="0", '2'="1", '3'="1")
+class(TAA$urgency)
+TAA$urgency <- unfactor(TAA$urgency)
+
+# cox model: overall survival not siginificantly different
+cox_urgency<-coxph(Surv(Months_Surv_FU, Survival2)~TAA$urgency + strata(Aneur_diam), data = TAA, na.action = "na.omit")
+summary(cox_urgency)
+
+#plot survival curve of patients with and without AAS
+compare_urgency <- survfit(Surv(exact_Years_Surv_FU, Survival2) ~ urgency, data = TAA)
+
+
+p15 <- ggsurvplot(fit = compare_urgency,
+           xlab = "years after TEVAR",
+           ylab = "overall survival",
+           title = "",
+           risk.table = TRUE,
+           tables.theme = theme_cleantable(),
+           palette = "lancet",
+           xlim = c(0,10),
+           risk.table.height = 0.15,
+           font.title = c(28,"bold"),
+           fontsize=6,
+           font.x=16,
+           font.y=16,
+           font.legend=16,
+           break.x.by=2,
+           legend=c(0.8,0.9),
+           legend.labs=c("elective", "urgent or emergent"),
+           conf.int=TRUE)
+
+p15$plot <- p15$plot + geom_vline(xintercept = 3)
+p15$plot <- p15$plot+ ggplot2::annotate("text", x = 1.37, y = 0.12, label = "survival difference in the \n first 3 years after TEVAR \n p=0.002", size = 5.5)
+p15$plot <- p15$plot+ ggplot2::annotate("text", x = 5.0, y = 0.12, label = "survival difference beyond the \n first 3 years after TEVAR \n p=0.369", size = 5.5)
+
+p15
+                       
+                               
+# short test - differene in survival before a set time point, t0 ist time point
+Short.test(TAA$Months_Surv_FU, TAA$Survival, TAA$urgency, t0=36)
+
+# short test - differene in survival before a set time point, t0 ist time point
+Long.test(TAA$Months_Surv_FU, TAA$Survival, TAA$urgency, t0=36)
+
+
+# cut off 58.4 - survival analysis
+TAA$diam_58.4 <- ifelse(TAA$Aneur_diam <= 58.4, 0, 1)
+table(TAA$diam_58.4)
+
+cox_diam_58.4<-coxph(Surv(Months_Surv_FU, Survival2)~TAA$diam_58.4, data = TAA, na.action = "na.omit")
+summary(cox_diam_58.4)
+
+##################################################################################
+
+#### Compare survival in patients with <61mm (0) and > 61mm (1)
+TAA$diam_61 <- ifelse(TAA$Aneur_diam <= 61, 0, 1)
+table(TAA$diam_61)
+
+cox_diam_61_s<-coxph(Surv(Months_Surv_FU, Survival2)~TAA$diam_61, data = TAA, na.action = "na.omit")
+summary(cox_diam_61_s)
+
+compare_diam_61_s <- survfit(Surv(exact_Years_Surv_FU, Survival2) ~ diam_61, data = TAA)
+compare_diam_61_s
+
+ggsurvplot(fit = compare_diam_61_s,
+                  xlab = "Time from TEVAR (years)",
+                  ylab = "survival probability",
+                  legend.labs=c("aneurysm diameter < 61mm", "aneurysm diameter > 61mm"),
+                  pval.size=9,
+                  title="",
+                  font.title = c("bold"),
+                  risk.table = TRUE,
+                  tables.theme = theme_cleantable(),
+                  break.x.by=2,
+                  xlim = c(0,10),
+                  legend=c(0.6,0.9),
+                  conf.int=TRUE,
+                  conf.int.alpha=0.075,
+                  tables.y.text=FALSE,
+                  palette="lancet",
+           font.legend=12
+                  )
+
+
+# compare reintervention according to aneurysm size
+
+TAA$diam_63 <- ifelse(TAA$Aneur_diam <= 63, 0, 1)
+
+cox_diam_63_r<-coxph(Surv(Months_Reinterv_FU, Reinterv)~TAA$diam_63, data = TAA, na.action = "na.omit")
+summary(cox_diam_63_r)
+
+compare_diam_63_r <- survfit(Surv(exact_Years_Reinterv_FU, Reinterv) ~ diam_63, data = TAA)
+
+ggsurvplot(fit = compare_diam_63_r,
+           xlab = "years after TEVAR",
+           ylab = "probabilty to be free from reintervention",
+           legend.labs=c("aneurysm diameter ≤ 60mm", "aneurysm diameter > 60mm"),
+           pval.size=9,
+           title= "",
+           font.title = c("bold"),
+           risk.table = TRUE,
+           tables.theme = theme_cleantable(),
+           break.x.by=2,
+           xlim = c(0,10),
+           legend=c(0.6,0.9),
+           conf.int=FALSE,
+           conf.int.alpha=0.075,
+           tables.y.text=FALSE,
+           palette="lancet",
+           pval=TRUE,
+           pval.method=TRUE,
+           pval.method.size=9,
+           font.legend=12)
+           
+
+
+#### both plots
+Figure_60mm <- list(survival_60mm, reinterv_60mm)
+arrange_ggsurvplots(Figure_60mm)
+
+
+
+################################################################################
+
+### plot for normal survival and event-free, reintervention-free survival
+# survfit object for normal survival
+Surv_normal <- survfit(Surv(TAA$exact_Years_Surv_FU, TAA$Survival) ~ 1, data=TAA)
+
+# clean survival: event-free and reintervention-free
+TAA$survival_x <- ifelse(TAA$Survival==0 & TAA$Reinterv==0 & TAA$MACE_Evemts==0 & TAA$late_events==0, 0, 1)
+TAA$survival_x_FU <- ifelse(TAA$Survival==1, TAA$exact_Years_Surv_FU, TAA$exact_Years_Reinterv_FU)
+
+# survfit object for reintervention, eventfree survival
+Surv_x <- survfit(Surv(TAA$survival_x_FU, TAA$survival_x) ~ 1, data=TAA)
+
+# both in one plot
+xx <- list(Surv_normal, Surv_x)
+
+# plot for overall und reintervention free survival
+ggsurvplot_combine(fit = xx,
+                   xlab = "Time from TEVAR (years)",
+                   ylab = "survival probability",
+                   title = "",
+                   font.title = c("bold"),
+                   risk.table = TRUE,
+                   tables.theme = theme_cleantable(),
+                   break.x.by=2,
+                   xlim = c(0,10),
+                   legend=c(0.6,0.9),
+                   font.legend=12,
+                   conf.int=TRUE,
+                   conf.int.alpha=0.075,
+                   tables.y.text=FALSE,
+                   palette="lancet",
+                   legend.labs=c("overall survival", "reintervention- and event-free survival"),
+                   surv.median.line="hv")
+
+# plot for survival according to operative urgency
+ggsurvplot(fit = compare_urgency,
+           xlab = "Time from TEVAR (years)",
+           ylab = "survival probability",
+           title = "",
+           font.title = "bold",
+           risk.table = TRUE,
+           tables.theme = theme_cleantable(),
+           break.x.by=2,
+           xlim = c(0,10),
+           legend=c(0.6,0.9),
+           font.legend=12,
+           conf.int=TRUE,
+           conf.int.alpha=0.075,
+           tables.y.text=FALSE,
+           palette = "lancet",
+           legend.labs=c("elective", "urgent or emergent"),
+           )
+
+Fig_2 <- list(plot_both_survival, survival_urgency)
+arrange_ggsurvplots(Fig_2)
+
+
+### reintervention rates accoring to leak status
+TAA$postOP_any_endoleak <- recode_factor(TAA$Endoleak_First_CT, '0'="0", 'Typ 1a'="1", 'Typ 1b'="1", 'Typ 2'="1", 'Typ 3'="1")
+leakreinterv2 <-survfit(Surv(exact_Years_Reinterv_FU, Reinterv2)~postOP_any_endoleak, data = TAA)
+
+ggsurvplot(fit = leakreinterv2,
+           xlab = "Time from TEVAR (years)",
+           ylab = "probabilty to be free from reintervention",
+           title = "",
+           font.title = "bold",
+           risk.table = TRUE,
+           tables.theme = theme_cleantable(),
+           break.x.by=2,
+           xlim = c(0,10),
+           legend=c(0.6,0.9),
+           font.legend=12,
+           conf.int=FALSE,
+           conf.int.alpha=0.075,
+           tables.y.text=FALSE,
+           palette = "lancet",
+           legend.labs=c("no primary leak", "primary leak"),
+           pval=TRUE,
+           pval.method=TRUE,
+           pval.method.size=9,
+           pval.size=9)
+
+
+
+
+#### box plot für die ct paramter
+data_CT_parameters3 <- subset(data_CT_parameters, data_CT_parameters$all_endoleaks_six_months == 0 | data_CT_parameters$all_endoleaks_six_months == 1)
+
+# für volume (p=0.025)
+
+data_CT_parameters3$all_endoleak_six_months2 <- recode_factor(data_CT_parameters3$all_endoleaks_six_months,
+                                                         '0'="no leak", '1'="leak")
+
+ggplot(data_CT_parameters3, aes(x=as.factor(all_endoleak_six_months2), y=Aneur_volume)) + 
+  geom_boxplot(fill="steelblue4", alpha=1, outlier.size = 0.2) + 
+  xlab("all types of endoleak")  +
+  ylab("aneurysm volume (ml)") +
+  theme(panel.background = element_rect(fill = 'white', colour = 'black')) +
+  theme(text = element_text(size=20), plot.title = element_text(size=25, face="bold")) +
+  ggtitle("aneurysm volume") +
+  geom_text(label="p=0.025", x=1.5, y=1000, size=8) 
+
+#proximal (p=0.110)
+
+data_CT_parameters3$typ1a_endoleak_six_months2 <- recode_factor(data_CT_parameters3$typ1a_endoleak_six_months,
+                                                          '0'="no leak", '1'="leak")
+
+ggplot(data_CT_parameters3, aes(x=as.factor(typ1a_endoleak_six_months2), y=OVP_diam)) + 
+  geom_boxplot(fill="brown", alpha=1, outlier.size = 0.2) +
+  xlab("typ 1a endoleak")  +
+  ylab("% stent oversizing in proximal landing zone") +
+  theme(panel.background = element_rect(fill = 'white', colour = 'black')) +
+  theme(text = element_text(size=20), plot.title = element_text(size=25, face="bold")) +
+  ggtitle("oversizing in proximal \n landing zone") + geom_text(label="p=0.110", x=1.5, y=50, size=8)
+
+  
+  #distal oversizing (p=0.026)
+
+data_CT_parameters3$typ1b_endoleak_six_months2 <- recode_factor(data_CT_parameters3$typ1b_endoleak_six_months,
+                                                                '0'="no leak", '1'="leak")
+
+ggplot(data_CT_parameters3, aes(x=as.factor(typ1b_endoleak_six_months2), y=OVD_diam)) + 
+  geom_boxplot(fill="brown", alpha=1, outlier.size = 0.2 ) + 
+  xlab("typ 1b endoleak")  +
+  ylab("% stent oversizing in distal landing zone") +
+  theme(panel.background = element_rect(fill = 'white', colour = 'black')) +
+  theme(text = element_text(size=20), plot.title = element_text(size=25, face="bold")) +
+  ggtitle("oversizing in distal \n landing zone") +
+  geom_text(label="p=0.026", x=1.5, y=60, size=8)
+
+
+ggsurvplot_combine(fit = xx,
+                   xlab = "Time from TEVAR (years)",
+                   ylab = "survival probability",
+                   title = "",
+                   font.title = c("bold"),
+                   risk.table = TRUE,
+                   tables.theme = theme_cleantable(),
+                   break.x.by=2,
+                   xlim = c(0,10),
+                   legend=c(0.6,0.9),
+                   font.legend=12,
+                   conf.int=TRUE,
+                   conf.int.alpha=0.075,
+                   tables.y.text=FALSE,
+                   palette="lancet",
+                   legend.labs=c("overall survival", "reintervention- and event-free survival"),
+                   surv.median.line="hv")
+
+#### in urgency 0 is elective, 1 is urgent/emergent
+aggregate(TAA$Aneur_diam, list(TAA$urgency), FUN=median, na.rm=T)
+wilcox.test(TAA$Aneur_diam ~ TAA$urgency)
+
+
+
+### violine plot: aneurysm volume and primary leak
+TAA$all_endoleaks_six_months <- recode_factor(TAA$endoleak_six_months, '0'="0", 'Typ 1a'="1", 'Typ 1b'="1", 'Typ 2'="1", 'Typ 3'="1", na.action = "na.omit")
+TAA$all_endoleaks_six_months <- recode_factor(TAA$all_endoleaks_six_months, '0'="no leak", '1'="leak")
+TAA$all_endoleaks_six_months <- recode_factor(TAA$all_endoleaks_six_months, '0'="no leak", '1'="leak")
+
+
+plot <- ggplot(data= subset(TAA, !is.na(all_endoleaks_six_months)),
+                            aes(x=all_endoleaks_six_months, y=Aneur_volume, na.rm=T)) +
+                 geom_violin(draw_quantiles = c(0.25, 0.5, 0.75),
+                             trim=FALSE,
+                             fill='white',
+                             alpha = 0.1,
+                             color = 'royalblue4')
+plot + geom_jitter(shape=16, position=position_jitter(0.1), size = 1.5, color = 'royalblue4') +
+  theme_classic() +
+  ylim(-100, 1200) +
+  xlab("any type of primary leak") +
+  ylab("aneurysm volume (cm3)")
+
+
+# violine plot: typ 1a leak and prox oversizing
+TAA$typ1a_endoleak_six_months <- recode_factor(TAA$endoleak_six_months, '0'="0", 'Typ 1a'="1", 'Typ 1b'="0", 'Typ 2'="0", 'Typ 3'="0")
+TAA$typ1a_endoleak_six_months <- recode_factor(TAA$typ1a_endoleak_six_months, '0'="no proximal leak", '1'="proximal leak")
+
+plot <- ggplot(data= subset(TAA, !is.na(all_endoleaks_six_months)), aes(x=typ1a_endoleak_six_months, y=OVP_diam), na.rm=TRUE) + geom_violin(draw_quantiles = c(0.25, 0.5, 0.75),trim=FALSE, fill='white', alpha = 0.1, color = 'royalblue4')
+plot + geom_jitter(shape=16, position=position_jitter(0.1), size = 1.5, color = 'royalblue4') +
+  theme_classic() +
+  ylim(-5, 65) +
+  xlab("presence of proximal leak in the first six months") +
+  ylab("stent oversizing in the proximal device landing zone (%)")
+
+#violine plot: typ 1b leak and dis oversizing
+TAA$typ1b_endoleak_six_months <- recode_factor(TAA$endoleak_six_months, '0'="0", 'Typ 1a'="0", 'Typ 1b'="1", 'Typ 2'="0", 'Typ 3'="0")
+TAA$typ1b_endoleak_six_months <- recode_factor(TAA$typ1b_endoleak_six_months, '0'="no distal leak", '1'="distal leak")
+
+plot <- ggplot(data= subset(TAA, !is.na(all_endoleaks_six_months)), aes(x=typ1b_endoleak_six_months, y=OVD_diam), na.rm=TRUE) + geom_violin(draw_quantiles = c(0.25, 0.5, 0.75),trim=FALSE, fill='white', alpha = 0.1, color = 'royalblue4')
+plot + geom_jitter(shape=16, position=position_jitter(0.1), size = 1.5, color = 'royalblue4') +
+  theme_classic() +
+  ylim(-5, 65) +
+  xlab("presence of distal leak in the first six months") +
+  ylab("stent oversizing in the distal device landing zone (%)")
+
+##### nochmal cut offs zu age + survival - cut off 79 years
+cutoff_Age <- surv_cutpoint(
+  TAA_prox,
+  time = "exact_Years_Surv_FU",
+  event = "Survival",
+  variables = "Age",
+  minprop = 0.1)
+print(cutoff_Age)
+
+
+### cut off zu duration + reintervention - 195min
+cutoff_Duration <- surv_cutpoint(
+  TAA_prox,
+  time = "exact_Years_Reinterv_FU",
+  event = "Reinterv",
+  variables = "Duration",
+  minprop = 0.1)
+print(cutoff_Duration)
