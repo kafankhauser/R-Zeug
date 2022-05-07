@@ -1,0 +1,16 @@
+setwd("/Users/kathi/desktop")
+install.packages("readxl")
+library("readxl")
+table <- read_excel("Tabelle21.xlsx")
+
+install.packages("ggplot2")
+library("ggplot2")
+library("tidyr")
+
+df <- pivot_longer(table, cols=2:4, names_to = "Band", values_to = "Wortanzahl")
+
+print(df)
+
+ggplot(df, aes(x=Wort, y=Wortanzahl, fill=Band)) + 
+  geom_bar(stat = "identity") +
+  theme_classic()
