@@ -1482,3 +1482,39 @@ wilcox.test(TAA_prox$PDLZ_length ~ TAA_prox$LZ02)
 
 TAA_prox %>% filter(LZ02 == 1) %>% summarize(describe(PDLZ_length))
 TAA_prox %>% filter(LZ02 == 0) %>% summarize(describe(PDLZ_length))
+
+
+
+#####
+
+####### Analyse nach Jahren
+detach(package:plyr)
+TAA$year <- format(TAA$OP_Date, "%Y")
+
+TAA$era <- recode(TAA$year,
+                  '2006' = 'A',
+                  '2007' = 'A',
+                  '2008' = 'A',
+                  '2009' = 'A',
+                  '2010' = 'A',
+                  '2011' = 'A',
+                  '2012' = 'A',
+                  '2013' = 'B',
+                  '2014' = 'B',
+                  '2015' = 'B',
+                  '2016' = 'B',
+                  '2017' = 'B',
+                  '2018' = 'B',
+                  '2019' = 'B')
+
+#look at different diameters in the different eras - no significant difference
+TAA %>%
+  group_by(year) %>%
+  summarize(mean = mean(Aneur_diam, na.rm=T))
+
+# look at debranching/CS Bypass over the years
+TAA_prox$CSB_or_Debranching <- ifelse(TAA_prox$CSBypass == 0 & TAA_prox$Debranching ==0, 0, 1)
+TAA_prox$year <- format(TAA_prox$OP_Date, "%Y")
+
+options(max.print=999999)
+TAA_prox %>% group_by(year, CSB_or_Debranching) %>% summarise(n = n()) %>% mutate(Freq = n/sum(n)) %>% print(n=40)
