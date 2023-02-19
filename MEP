@@ -1,0 +1,63 @@
+library(easypackages)
+
+libraries(c("survival",
+            "psych",
+            "cmprsk",
+            "dplyr",
+            "readxl",
+            "forcats",
+            "foreign",
+            "ggplot2",
+            "ggpubr",
+            "ggrepel",
+            "ggsci",
+            "ggsignif",
+            "ggtext",
+            "glmet",
+            "lubridate",
+            "MASS",
+            "MatchIt",
+            "Matching",
+            "Matrixmodels",
+            "mstate",
+            "olsrr",
+            "OLScurve",
+            "plyr",
+            "purrr",
+            "rematch",
+            "rematch2",
+            "reshape",
+            "reshape2",
+            "RItools",
+            "statmod",
+            "survival",
+            "survminer",
+            "stringi",
+            "survMisc",
+            "tibble",
+            "tidyr", 
+            "tidyselect",
+            "tidyverse",
+            "xfun",
+            "xopen",
+            "ComparisonSurv"))
+
+#Import
+MEP <- read_excel("MEP_datensatz_anonym.xlsx")
+
+#subsets
+patients_MEP <- subset(MEP, MEP == "yes")
+patients_CSF <- subset(MEP, CSF == "yes")
+patients_no_moni <- subset(MEP, MEP == "no" & CSF == "no")
+
+#describtive data (shapiro_wilk_test -> p<0.05 bedeutet keine normalverteilung)
+#shapiro.test(MEP$xx)
+#describe(MEP$xx, quant=c(0.25, 0.75))
+
+#survival
+Surv <- survfit(Surv(survival_months, survival_1dead) ~ 1, data = MEP)
+summary(Surv, times = c(0.99, 11.99, 35.99))
+
+MEP$no_monitoring <- ifelse(MEP$MEP == "no" & MEP$CSF == "no", 'no', 'yes' )
+cox <-coxph(Surv(survival_months, survival_1dead)~no_monitoring, data = MEP, na.action = "na.omit")
+summary(cox)
