@@ -1518,3 +1518,17 @@ TAA_prox$year <- format(TAA_prox$OP_Date, "%Y")
 
 options(max.print=999999)
 TAA_prox %>% group_by(year, CSB_or_Debranching) %>% summarise(n = n()) %>% mutate(Freq = n/sum(n)) %>% print(n=40)
+
+
+###### survival non elective vs elective
+subset_elective <- subset(TAA, urgency == 0)
+Surv_elective <- survfit(Surv(Months_Surv_FU, Survival2) ~ 1, data = subset_elective)
+summary(Surv_elective, times = c(0.99, 11.99, 35.99, 59.99, 95.99, 119.99))
+
+subset_non_elective <- subset(TAA, urgency == 1)
+Surv_non_elective <- survfit(Surv(Months_Surv_FU, Survival2) ~ 1, data = subset_non_elective)
+summary(Surv_non_elective, times = c(0.99, 11.99, 35.99, 59.99, 95.99, 119.99))
+
+### landing zones via typ 1a endoleak oder nicht
+TAA_prox$typ1a_endoleak_six_months <- recode_factor(TAA_prox$endoleak_six_months, '0'="0", 'Typ 1a'="1", 'Typ 1b'="0", 'Typ 2'="0", 'Typ 3'="0")
+table(TAA_prox$typ1a_endoleak_six_months, TAA_prox$prox_landing_zone )
