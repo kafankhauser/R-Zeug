@@ -1532,3 +1532,33 @@ summary(Surv_non_elective, times = c(0.99, 11.99, 35.99, 59.99, 95.99, 119.99))
 ### landing zones via typ 1a endoleak oder nicht
 TAA_prox$typ1a_endoleak_six_months <- recode_factor(TAA_prox$endoleak_six_months, '0'="0", 'Typ 1a'="1", 'Typ 1b'="0", 'Typ 2'="0", 'Typ 3'="0")
 table(TAA_prox$typ1a_endoleak_six_months, TAA_prox$prox_landing_zone )
+
+# look at debranching/CS Bypass over the years
+TAA_prox$CSB_or_Debranching <- ifelse(TAA_prox$CSBypass == 0 & TAA_prox$Debranching ==0, 0, 1)
+TAA_prox$year <- format(TAA_prox$OP_Date, "%Y")
+
+options(max.print=999999)
+TAA_prox %>% group_by(year, CSB_or_Debranching) %>% summarise(n = n()) %>% mutate(Freq = n/sum(n)) %>% print(n=40)
+
+### look at survival and reintervention over the years
+subset_2006_to_2010 <- subset(TAA, year == 2006  | year == 2007  | year == 2008  | year == 2009 | year == 2010)
+subset_2011_to_2015 <- subset(TAA, year == 2011  | year == 2012  | year == 2013  | year == 2014 | year == 2015)
+subset_2016_to_2019 <- subset(TAA,  year == 2016  | year == 2017  | year == 2018  | year == 2019)
+
+#2006-2010
+Surv_2006_2010<- survfit(Surv(exact_Years_Surv_FU, Survival) ~ 1, data = subset_2006_to_2010)
+summary(Surv_2006_2010, times = c(0.99, 11.99, 35.99, 59.99, 119.99))
+Reinterv_2006_2010<- survfit(Surv(exact_Years_Reinterv_FU, Reinterv) ~ 1, data = subset_2006_to_2010)
+summary(Reinterv_2006_2010, times = c(0.99, 11.99, 35.99, 59.99, 119.99))
+
+#2011-2015
+Surv_2011_2015<- survfit(Surv(exact_Years_Surv_FU, Survival) ~ 1, data = subset_2011_to_2015)
+summary(Surv_2011_2015, times = c(0.99, 11.99, 35.99, 59.99, 119.99))
+Reinterv_2011_2015<- survfit(Surv(exact_Years_Reinterv_FU, Reinterv) ~ 1, data = subset_2011_to_2015)
+summary(Reinterv_2011_2015, times = c(0.99, 11.99, 35.99, 59.99, 119.99))
+
+#2016-2019
+Surv_2016_2019<- survfit(Surv(exact_Years_Surv_FU, Survival) ~ 1, data = subset_2016_to_2019)
+summary(Surv_2016_2019, times = c(0.99, 11.99, 35.99, 59.99, 119.99))
+Reinterv_2016_2019<- survfit(Surv(exact_Years_Reinterv_FU, Reinterv) ~ 1, data = subset_2016_to_2019)
+summary(Reinterv_2016_2019, times = c(0.99, 11.99, 35.99, 59.99, 119.99))
