@@ -1562,3 +1562,8 @@ Surv_2016_2019<- survfit(Surv(exact_Years_Surv_FU, Survival) ~ 1, data = subset_
 summary(Surv_2016_2019, times = c(0.99, 11.99, 35.99, 59.99, 119.99))
 Reinterv_2016_2019<- survfit(Surv(exact_Years_Reinterv_FU, Reinterv) ~ 1, data = subset_2016_to_2019)
 summary(Reinterv_2016_2019, times = c(0.99, 11.99, 35.99, 59.99, 119.99))
+
+#### compare survival in patients with proximal intervention vs. those without
+TAA$prox_reinterv <- ifelse(TAA$SN == 74 | TAA$SN ==142 | TAA$SN == 43 | TAA$SN == 100 | TAA$SN == 59 | TAA$SN == 53 | TAA$SN == 144, 1, 0)
+cox_prox_reinterv<-coxph(Surv(Months_Surv_FU, Survival)~TAA$prox_reinterv, data = TAA, na.action = "na.omit")
+summary(cox_prox_reinterv)
