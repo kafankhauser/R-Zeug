@@ -1577,3 +1577,27 @@ wilcox.test(TAA$Euroscore2 ~ TAA$proth_infect)
 wilcox.test(TAA$Duration ~ TAA$proth_infect)
 fisher.test(TAA$Access, TAA$proth_infect)
 
+# Temporäre Analyse
+
+#Date-Format transformieren
+TAA_prox$date_in_sec <- as.numeric(TAA_prox$OP_date) #Für Analyse
+TAA_prox§year <- year(TAA_prox$OP_date) # Für Graphen
+
+#Check for Normalverteilung - shapiro wilk p<0.05 nicht normalverteilt
+shapiro.test(TAA_prox$Age)
+shapiro.test(TAA_prox$Aneur_Diam)
+shapiro.test(TAA_prox$Euroscore2)
+
+### In Abhängigkeit - Normalverteilt (Pearson test für normalveteilte, Kendall für nicht normalverteilte)
+cor(TAA_prox§date_in_sec, TAA$Age, method = c("pearson", "kendall", "spearman"))
+cor(TAA_prox§date_in_sec, TAA$Aneur_Diam, method = c("pearson", "kendall", "spearman"))
+cor(TAA_prox§date_in_sec, TAA$Euroscore2, method = c("pearson", "kendall", "spearman"))
+cor(TAA_prox§date_in_sec, TAA$prox_landing_zone, method = c("pearson", "kendall", "spearman"))
+
+#Analyse: Waren die Outcomes bezüglich Überleben & Reinterventionsraten in der zweiten Studienhälfte besser als in der ersten?
+TAA$before_2013 <- ifelse(TAA$year == 2006  | TAA$year == 2007  | TAA$year == 2008  | TAA$year == 2009 | TAA$year == 2010 | TAA$year == 2011 | TAA$year == 2012, 0, 1)
+cox_surv_before_2013<-coxph(Surv(Months_Surv_FU, Survival)~TAA$before_2013, data = TAA, na.action = "na.omit")
+summary(cox_surv_before_2013) # Survival
+cox_reinterv_before_2013<-coxph(Surv(Months_Reinterv_FU, Reinterv)~TAA$before_2013, data = TAA, na.action = "na.omit")
+summary(cox_reinterv_before_2013) # Reintervention
+
