@@ -1594,10 +1594,29 @@ cor(TAA_prox§date_in_sec, TAA$Aneur_Diam, method = c("pearson", "kendall", "spe
 cor(TAA_prox§date_in_sec, TAA$Euroscore2, method = c("pearson", "kendall", "spearman"))
 cor(TAA_prox§date_in_sec, TAA$prox_landing_zone, method = c("pearson", "kendall", "spearman"))
 
+#plot correlations
+library("ggpubr")
+ggscatter(my_data, x = "mpg", y = "wt", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "pearson",
+          xlab = "Miles/(US) gallon", ylab = "Weight (1000 lbs)")
+
+
 #Analyse: Waren die Outcomes bezüglich Überleben & Reinterventionsraten in der zweiten Studienhälfte besser als in der ersten?
 TAA$before_2013 <- ifelse(TAA$year == 2006  | TAA$year == 2007  | TAA$year == 2008  | TAA$year == 2009 | TAA$year == 2010 | TAA$year == 2011 | TAA$year == 2012, 0, 1)
+
+#survival
 cox_surv_before_2013<-coxph(Surv(Months_Surv_FU, Survival)~TAA$before_2013, data = TAA, na.action = "na.omit")
-summary(cox_surv_before_2013) # Survival
+summary(cox_surv_before_2013) 
+
+#reintervention
 cox_reinterv_before_2013<-coxph(Surv(Months_Reinterv_FU, Reinterv)~TAA$before_2013, data = TAA, na.action = "na.omit")
-summary(cox_reinterv_before_2013) # Reintervention
+summary(cox_reinterv_before_2013) 
+
+#endoleaks - point biserial correlation
+TAA_prox$all_endoleaks_six_months <- recode_factor(TAA_prox$endoleak_six_months, '0'="0", 'Typ 1a'="1", 'Typ 1b'="1", 'Typ 2'="1", 'Typ 3'="1", na.action = "na.omit")
+cor.test(TAA_prox§date_in_sec, TAA_prox$all_endoleaks_six_months)
+ggplot(dataset, aes(x=Genre, y=Reviews)) + geom_point()
+
+
 
