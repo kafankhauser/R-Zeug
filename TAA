@@ -1580,27 +1580,33 @@ fisher.test(TAA$Access, TAA$proth_infect)
 # Temporäre Analyse
 
 #Date-Format transformieren
-TAA_prox$date_in_sec <- as.numeric(TAA_prox$OP_date) #Für Analyse
-TAA_prox§year <- year(TAA_prox$OP_date) # Für Graphen
+TAA_prox$date_in_sec <- as.numeric(TAA_prox$OP_Date) #Für Analyse
+TAA_prox$year <- format(TAA_prox$OP_Date, "%Y") # Für Graphen
 
 #Check for Normalverteilung - shapiro wilk p<0.05 nicht normalverteilt
-shapiro.test(TAA_prox$Age)
-shapiro.test(TAA_prox$Aneur_Diam)
-shapiro.test(TAA_prox$Euroscore2)
+shapiro.test(TAA_prox$date_in_sec) #nicht normalverteilt
+shapiro.test(TAA_prox$Age) #nicht normalverteilt
+shapiro.test(TAA_prox$Aneur_diam) #nicht normalverteilt
+shapiro.test(TAA_prox$Euroscore2) #nicht normalverteilt
 
 ### In Abhängigkeit - Normalverteilt (Pearson test für normalveteilte, Kendall für nicht normalverteilte)
-cor(TAA_prox§date_in_sec, TAA$Age, method = c("pearson", "kendall", "spearman"))
-cor(TAA_prox§date_in_sec, TAA$Aneur_Diam, method = c("pearson", "kendall", "spearman"))
-cor(TAA_prox§date_in_sec, TAA$Euroscore2, method = c("pearson", "kendall", "spearman"))
-cor(TAA_prox§date_in_sec, TAA$prox_landing_zone, method = c("pearson", "kendall", "spearman"))
+cor.test(TAA_prox$date_in_sec, TAA$Age, method = "kendall")
+cor.test(TAA_prox$date_in_sec, TAA$Aneur_diam, method = "kendall")
+cor.test(TAA_prox$date_in_sec, TAA$Euroscore2, method = "kendall")
+cor.test(TAA_prox$date_in_sec, TAA$prox_landing_zone, method =  "kendall")
 
-#plot correlations
+#plot correlations - nicht nehmen
 library("ggpubr")
-ggscatter(my_data, x = "mpg", y = "wt", 
+ggscatter(TAA_prox, x = "date_in_sec", y = "Euroscore2", 
           add = "reg.line", conf.int = TRUE, 
-          cor.coef = TRUE, cor.method = "pearson",
-          xlab = "Miles/(US) gallon", ylab = "Weight (1000 lbs)")
+          cor.coef = F, cor.method = "kendall",
+          xlab = "study timespan (2006-2019)", ylab = "Euroscore (%)") + scale_x_continuous(breaks = NULL)
 
+
+ggscatter(TAA_prox, x = "date_in_sec", y = "prox_landing_zone", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = F, cor.method = "kendall",
+          xlab = "study timespan (2006-2019)", ylab = "proximal device landing zone") +scale_x_continuous(breaks = NULL )
 
 #Analyse: Waren die Outcomes bezüglich Überleben & Reinterventionsraten in der zweiten Studienhälfte besser als in der ersten?
 TAA$before_2013 <- ifelse(TAA$year == 2006  | TAA$year == 2007  | TAA$year == 2008  | TAA$year == 2009 | TAA$year == 2010 | TAA$year == 2011 | TAA$year == 2012, 0, 1)
@@ -1613,10 +1619,13 @@ summary(cox_surv_before_2013)
 cox_reinterv_before_2013<-coxph(Surv(Months_Reinterv_FU, Reinterv)~TAA$before_2013, data = TAA, na.action = "na.omit")
 summary(cox_reinterv_before_2013) 
 
-#endoleaks - point biserial correlation
+#endoleaks - point biserial correlation geht nicht, nicht normalverteilt
 TAA_prox$all_endoleaks_six_months <- recode_factor(TAA_prox$endoleak_six_months, '0'="0", 'Typ 1a'="1", 'Typ 1b'="1", 'Typ 2'="1", 'Typ 3'="1", na.action = "na.omit")
-cor.test(TAA_prox§date_in_sec, TAA_prox$all_endoleaks_six_months)
-ggplot(dataset, aes(x=Genre, y=Reviews)) + geom_point()
+cox.test(TAA_prox$date_in_sec ~ TAA_prox$all_endoleaks_six_months)
+table(TAA$before_2013)
+
+
+
 
 
 
